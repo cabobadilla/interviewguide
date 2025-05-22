@@ -1,0 +1,24 @@
+# Environment variables
+.env
+
+# Dependencies
+/node_modules
+/client/node_modules
+
+# Production build
+/client/build
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Editor/IDE directories
+.idea/
+.vscode/
+*.swp
+*.swo 
