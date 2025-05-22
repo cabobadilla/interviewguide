@@ -3,7 +3,7 @@ import React from 'react';
 function QuestionList({ questions }) {
   console.log('QuestionList recibió:', questions);
   
-  // Verificar si questions es un objeto con una propiedad 'questions'
+  // Extraer preguntas del objeto recibido
   let questionItems = [];
   
   if (Array.isArray(questions)) {
@@ -20,43 +20,72 @@ function QuestionList({ questions }) {
     }
   }
   
-  console.log('Preguntas procesadas:', questionItems);
+  // Separar preguntas por tipo
+  const processQuestions = questionItems.filter(q => 
+    (q.type || '').toLowerCase() === 'process'
+  );
+  
+  const considerationQuestions = questionItems.filter(q => 
+    (q.type || '').toLowerCase() === 'consideration'
+  );
+  
+  // Crear filas para la tabla (máximo entre las dos categorías)
+  const maxRows = Math.max(processQuestions.length, considerationQuestions.length);
+  const tableRows = [];
+  
+  for (let i = 0; i < maxRows; i++) {
+    tableRows.push({
+      process: processQuestions[i] || null,
+      consideration: considerationQuestions[i] || null
+    });
+  }
+  
+  console.log('Filas de tabla:', tableRows);
+
+  if (!questionItems || questionItems.length === 0) {
+    return <p>No hay preguntas disponibles.</p>;
+  }
 
   return (
-    <div className="question-list">
-      {(!questionItems || questionItems.length === 0) && (
-        <p>No hay preguntas disponibles.</p>
-      )}
-      
-      {questionItems && questionItems.length > 0 && questionItems.map((question, index) => {
-        // Determinar el tipo de pregunta
-        const questionType = question.type || 'general';
-        // Obtener el texto de la pregunta
-        const questionText = question.question || question.text || question;
-        
-        return (
-          <div 
-            key={index} 
-            className={`question-item ${questionType}`}
-          >
-            <h3>
-              {questionType === 'process' 
-                ? '📋 Proceso: ' 
-                : questionType === 'consideration'
-                  ? '💡 Consideración: '
-                  : '❓ Pregunta: '}
-            </h3>
-            <p>{typeof questionText === 'string' ? questionText : JSON.stringify(questionText)}</p>
-            
-            {/* Si hay otros detalles importantes, mostrarlos */}
-            {question.details && (
-              <div className="question-details">
-                <p><em>{question.details}</em></p>
-              </div>
-            )}
-          </div>
-        );
-      })}
+    <div className="questions-container">
+      <table className="questions-table">
+        <thead>
+          <tr>
+            <th className="number-column">#</th>
+            <th className="process-column">Preguntas del Proceso</th>
+            <th className="consideration-column">Consideraciones Clave</th>
+          </tr>
+        </thead>
+        <tbody>
+          {tableRows.map((row, index) => (
+            <tr key={index}>
+              <td className="number-column">{index + 1}</td>
+              <td className="process-column">
+                {row.process ? (
+                  <div className="question-content">
+                    {typeof row.process.question === 'string' 
+                      ? row.process.question 
+                      : JSON.stringify(row.process.question)}
+                  </div>
+                ) : (
+                  <div className="empty-cell">-</div>
+                )}
+              </td>
+              <td className="consideration-column">
+                {row.consideration ? (
+                  <div className="question-content">
+                    {typeof row.consideration.question === 'string' 
+                      ? row.consideration.question 
+                      : JSON.stringify(row.consideration.question)}
+                  </div>
+                ) : (
+                  <div className="empty-cell">-</div>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

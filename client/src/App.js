@@ -132,19 +132,43 @@ function App() {
           onSelect={handleCaseSelect} 
         />
         
-        <div style={{ marginTop: '20px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-          <button onClick={() => handleShowQuestions(false)} disabled={!selectedCase || loading}>
-            {loading ? 'Cargando...' : 'Mostrar Preguntas'}
+        <div style={{ marginTop: '20px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+          <button 
+            onClick={() => handleShowQuestions(false)} 
+            disabled={!selectedCase || loading}
+            style={{ display: 'flex', alignItems: 'center' }}
+          >
+            {loading ? (
+              <>
+                <svg className="spinner" viewBox="0 0 50 50" style={{ width: '20px', height: '20px', marginRight: '8px' }}>
+                  <circle className="path" cx="25" cy="25" r="20" fill="none" strokeWidth="5"></circle>
+                </svg>
+                Cargando...
+              </>
+            ) : (
+              <>Mostrar Preguntas</>
+            )}
           </button>
-          <button onClick={() => setShowForm(!showForm)} disabled={loading}>
+          
+          <button 
+            onClick={() => setShowForm(!showForm)} 
+            disabled={loading}
+            style={{ background: showForm ? '#e53e3e' : '#3498db' }}
+          >
             {showForm ? 'Cancelar' : 'Agregar Nuevo Caso'}
           </button>
+          
           <button 
             onClick={() => setShowDebug(!showDebug)} 
-            style={{ marginLeft: 'auto', background: '#7f8c8d' }}
+            style={{ 
+              marginLeft: 'auto', 
+              background: showDebug ? '#64748b' : '#94a3b8',
+              fontSize: '0.85rem',
+              padding: '8px 12px'
+            }}
             disabled={loading}
           >
-            {showDebug ? 'Ocultar Herramientas' : 'Mostrar Herramientas de Diagnóstico'}
+            {showDebug ? 'Ocultar Diagnóstico' : 'Mostrar Diagnóstico'}
           </button>
         </div>
       </div>
@@ -160,7 +184,7 @@ function App() {
       
       {loading && (
         <div className="loading card">
-          <h3>Estado de la solicitud:</h3>
+          <h3>Estado de la solicitud</h3>
           <p>Generando preguntas para la entrevista...</p>
           {apiStatus && <div className="status-message">{apiStatus}</div>}
         </div>
@@ -168,14 +192,14 @@ function App() {
       
       {apiError && (
         <div className="error-message card">
-          <h3>Error:</h3>
+          <h3>Error</h3>
           <p>{apiError}</p>
         </div>
       )}
       
       {!loading && apiStatus && !apiError && (
         <div className="status-message card">
-          <h3>Estado:</h3>
+          <h3>Estado</h3>
           <p>{apiStatus}</p>
         </div>
       )}
@@ -184,15 +208,26 @@ function App() {
       
       {questions.length > 0 && (
         <div className="card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2>Preguntas para la Entrevista</h2>
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            marginBottom: '20px'
+          }}>
+            <h2 style={{ margin: 0 }}>Preguntas para la Entrevista</h2>
             {isFromCache && (
               <button 
                 onClick={handleRefreshQuestions} 
                 className="refresh-button"
                 disabled={loading}
               >
-                🔄 Generar Nuevas Preguntas
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 2v6h-6"></path>
+                  <path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path>
+                  <path d="M3 22v-6h6"></path>
+                  <path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
+                </svg>
+                Generar Nuevas
               </button>
             )}
           </div>
