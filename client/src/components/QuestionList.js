@@ -3,6 +3,7 @@ import axios from 'axios';
 
 function QuestionList({ questions, caseId, onSelectionChange }) {
   const [selectedQuestions, setSelectedQuestions] = useState({});
+  const [selectedConsiderations, setSelectedConsiderations] = useState({});
   const [interviewId, setInterviewId] = useState(null);
   const [interviewCode, setInterviewCode] = useState('');
   const [saving, setSaving] = useState(false);
@@ -25,7 +26,7 @@ function QuestionList({ questions, caseId, onSelectionChange }) {
   }, [caseId, questions, interviewId]);
   
   // Manejar cambios en la selección de preguntas
-  const handleSelectionChange = async (questionId, isSelected) => {
+  const handleQuestionSelection = async (questionId, isSelected) => {
     if (!interviewId) return;
     
     setSaving(true);
@@ -59,46 +60,40 @@ function QuestionList({ questions, caseId, onSelectionChange }) {
     }
   };
   
-  // Extraer preguntas del objeto recibido
-  let questionItems = [];
-  
-  if (Array.isArray(questions)) {
-    questionItems = questions;
-  } else if (questions && typeof questions === 'object') {
-    // Si es un objeto, buscar una propiedad 'questions' o alguna que parezca un array
-    const possibleArrays = Object.entries(questions)
-      .filter(([key, value]) => Array.isArray(value))
-      .map(([key, value]) => value);
+  // Manejar cambios en la selección de consideraciones
+  const handleConsiderationSelection = async (questionId, considerationId, isSelected) => {
+    if (!interviewId) return;
     
-    if (possibleArrays.length > 0) {
-      // Usar el primer array encontrado
-      questionItems = possibleArrays[0];
+    setSaving(true);
+    
+    try {
+      // Actualizar estado local inmediatamente para feedback instantáneo
+      setSelectedConsiderations(prev => ({
+        ...prev,
+        [`${questionId}-${considerationId}`]: isSelected
+      }));
+      
+      // Guardar selección en el servidor
+      await axios.post(`/api/interviews/${interviewId}/questions`, {
+        questionId,
+        considerationId,
+        selected: isSelected
+      });
+      
+    } catch (error) {
+      console.error('Error updating selected considerations:', error);
+      // Revertir cambio en caso de error
+      setSelectedConsiderations(prev => ({
+        ...prev,
+        [`${questionId}-${considerationId}`]: !isSelected
+      }));
+    } finally {
+      setSaving(false);
     }
-  }
+  };
   
-  // Separar preguntas por tipo
-  const processQuestions = questionItems.filter(q => 
-    (q.type || '').toLowerCase() === 'process'
-  );
-  
-  const considerationQuestions = questionItems.filter(q => 
-    (q.type || '').toLowerCase() === 'consideration'
-  );
-  
-  // Crear filas para la tabla (máximo entre las dos categorías)
-  const maxRows = Math.max(processQuestions.length, considerationQuestions.length);
-  const tableRows = [];
-  
-  for (let i = 0; i < maxRows; i++) {
-    tableRows.push({
-      process: processQuestions[i] || null,
-      consideration: considerationQuestions[i] || null
-    });
-  }
-  
-  console.log('Filas de tabla:', tableRows);
-
-  if (!questionItems || questionItems.length === 0) {
+  // Verificar si hay preguntas para mostrar
+  if (!questions || questions.length === 0) {
     return <p>No hay preguntas disponibles.</p>;
   }
 
@@ -123,61 +118,80 @@ function QuestionList({ questions, caseId, onSelectionChange }) {
           </tr>
         </thead>
         <tbody>
-          {tableRows.map((row, index) => (
-            <tr key={index}>
-              <td className="number-column">{index + 1}</td>
-              <td className="process-column">
-                {row.process ? (
+          {questions.map((processQuestion, index) => (
+            <React.Fragment key={processQuestion.id}>
+              <tr className="process-row">
+                <td className="number-column">{index + 1}</td>
+                <td className="process-column">
                   <div className="question-content">
-                    {typeof row.process.question === 'string' 
-                      ? row.process.question 
-                      : JSON.stringify(row.process.question)}
+                    {processQuestion.question}
                   </div>
-                ) : (
-                  <div className="empty-cell">-</div>
-                )}
-              </td>
-              <td className="consideration-column">
-                {row.consideration ? (
-                  <div className="question-content">
-                    {typeof row.consideration.question === 'string' 
-                      ? row.consideration.question 
-                      : JSON.stringify(row.consideration.question)}
+                </td>
+                <td className="consideration-column">
+                  <div className="consideration-list">
+                    {processQuestion.considerations?.length > 0 ? (
+                      <ul className="consideration-items">
+                        {processQuestion.considerations.map((consideration) => (
+                          <li key={consideration.id} className="consideration-item">
+                            {consideration.question}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <div className="empty-cell">Sin consideraciones adicionales</div>
+                    )}
                   </div>
-                ) : (
-                  <div className="empty-cell">-</div>
-                )}
-              </td>
-              <td className="selection-column">
-                <div className="selection-controls">
-                  {row.process && (
+                </td>
+                <td className="selection-column">
+                  <div className="selection-controls">
                     <label className="selection-label">
                       <input 
                         type="checkbox" 
-                        checked={!!selectedQuestions[row.process.id]}
-                        onChange={(e) => handleSelectionChange(row.process.id, e.target.checked)}
+                        checked={!!selectedQuestions[processQuestion.id]}
+                        onChange={(e) => handleQuestionSelection(processQuestion.id, e.target.checked)}
                         disabled={saving}
                       />
                       <span className="checkmark"></span>
-                      <span className="selection-text">Proceso</span>
+                      <span className="selection-text">Usar Pregunta</span>
                     </label>
-                  )}
-                  
-                  {row.consideration && (
-                    <label className="selection-label">
-                      <input 
-                        type="checkbox" 
-                        checked={!!selectedQuestions[row.consideration.id]}
-                        onChange={(e) => handleSelectionChange(row.consideration.id, e.target.checked)}
-                        disabled={saving}
-                      />
-                      <span className="checkmark"></span>
-                      <span className="selection-text">Consideración</span>
-                    </label>
-                  )}
-                </div>
-              </td>
-            </tr>
+                  </div>
+                </td>
+              </tr>
+              
+              {/* Consideraciones relacionadas con esta pregunta de proceso */}
+              {processQuestion.considerations?.map((consideration) => (
+                <tr key={consideration.id} className="consideration-row">
+                  <td className="number-column">
+                    <span className="consideration-number">{consideration.id}</span>
+                  </td>
+                  <td className="process-column">
+                    {/* Celda vacía en la columna de proceso */}
+                  </td>
+                  <td className="consideration-column">
+                    <div className="consideration-content">
+                      {consideration.question}
+                    </div>
+                  </td>
+                  <td className="selection-column">
+                    <div className="selection-controls">
+                      <label className="selection-label consideration-selection">
+                        <input 
+                          type="checkbox" 
+                          checked={!!selectedConsiderations[`${processQuestion.id}-${consideration.id}`]}
+                          onChange={(e) => handleConsiderationSelection(
+                            processQuestion.id, 
+                            consideration.id, 
+                            e.target.checked
+                          )}
+                        />
+                        <span className="checkmark"></span>
+                        <span className="selection-text">Usar Consideración</span>
+                      </label>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </React.Fragment>
           ))}
         </tbody>
       </table>

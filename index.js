@@ -36,6 +36,14 @@ const Case = sequelize.define('Case', {
     type: DataTypes.STRING,
     defaultValue: ''
   },
+  objective: {
+    type: DataTypes.TEXT,
+    defaultValue: ''
+  },
+  expectedOutcome: {
+    type: DataTypes.TEXT,
+    defaultValue: ''
+  },
   isDefault: {
     type: DataTypes.BOOLEAN,
     defaultValue: false
@@ -53,6 +61,19 @@ const Question = sequelize.define('Question', {
   type: {
     type: DataTypes.STRING,
     defaultValue: 'general'
+  },
+  metadata: {
+    type: DataTypes.TEXT,
+    defaultValue: '{}',
+    get() {
+      const rawValue = this.getDataValue('metadata');
+      return rawValue ? JSON.parse(rawValue) : {};
+    },
+    set(value) {
+      this.setDataValue('metadata', 
+        typeof value === 'string' ? value : JSON.stringify(value)
+      );
+    }
   }
 }, {
   timestamps: true
@@ -86,6 +107,19 @@ const SelectedQuestion = sequelize.define('SelectedQuestion', {
   order: {
     type: DataTypes.INTEGER,
     defaultValue: 0
+  },
+  metadata: {
+    type: DataTypes.TEXT,
+    defaultValue: '{}',
+    get() {
+      const rawValue = this.getDataValue('metadata');
+      return rawValue ? JSON.parse(rawValue) : {};
+    },
+    set(value) {
+      this.setDataValue('metadata', 
+        typeof value === 'string' ? value : JSON.stringify(value)
+      );
+    }
   }
 }, {
   timestamps: true
@@ -182,7 +216,7 @@ app.get('/api/cases/:id', async (req, res) => {
 app.put('/api/cases/:id', async (req, res) => {
   try {
     const caseId = req.params.id;
-    const { name, description } = req.body;
+    const { name, description, objective, expectedOutcome } = req.body;
     
     const caseData = await Case.findByPk(caseId);
     
@@ -207,7 +241,9 @@ app.put('/api/cases/:id', async (req, res) => {
     // Actualizar los campos
     await caseData.update({
       name: name || caseData.name,
-      description: description !== undefined ? description : caseData.description
+      description: description !== undefined ? description : caseData.description,
+      objective: objective !== undefined ? objective : caseData.objective,
+      expectedOutcome: expectedOutcome !== undefined ? expectedOutcome : caseData.expectedOutcome
     });
     
     res.json(caseData);
@@ -403,6 +439,12 @@ async function generateQuestionsForCase(caseData, req, res, debugInfo) {
   debugInfo.steps.push('Conectando con OpenAI API');
   console.log('Connecting to OpenAI API with key starting with:', process.env.OPENAI_API_KEY.substring(0, 5));
   
+  // Preparar información adicional para el prompt
+  const objective = caseData.objective ? `\nObjetivo: ${caseData.objective}` : '';
+  const expectedOutcome = caseData.expectedOutcome ? `\nResultado esperado: ${caseData.expectedOutcome}` : '';
+  const additionalInfo = (objective || expectedOutcome) ? 
+    `\nInformación adicional sobre el caso:${objective}${expectedOutcome}` : '';
+  
   // Generate questions using OpenAI API
   try {
     const completion = await openai.chat.completions.create({
@@ -414,11 +456,42 @@ async function generateQuestionsForCase(caseData, req, res, debugInfo) {
         },
         {
           role: "user", 
-          content: `Genera entre 5 y 8 preguntas técnicas clave en español para una entrevista a un arquitecto enfocadas en "${caseData.name}". 
-          Incluye tanto preguntas relacionadas con el proceso como preguntas sobre aspectos clave a considerar.
-          Formatea la respuesta como un objeto JSON con una propiedad "questions" que contenga un array de objetos con campos "question" y "type",
-          donde "type" puede ser "process" (para preguntas de proceso) o "consideration" (para preguntas de consideraciones).
-          Todas las preguntas deben estar en español.`
+          content: `Genera 4-6 preguntas principales de proceso para una entrevista técnica a un arquitecto enfocadas en "${caseData.name}".${additionalInfo}
+          
+          Para cada pregunta de proceso, genera 2-3 consideraciones clave o preguntas específicas relacionadas que profundicen en aspectos particulares de la pregunta principal.
+          
+          Formatea la respuesta como un objeto JSON con esta estructura:
+          {
+            "questions": [
+              {
+                "id": 1,
+                "question": "Pregunta principal sobre el proceso",
+                "type": "process",
+                "considerations": [
+                  {
+                    "id": "1.1",
+                    "question": "Consideración específica relacionada con la pregunta principal",
+                    "type": "consideration"
+                  },
+                  {
+                    "id": "1.2",
+                    "question": "Otra consideración específica",
+                    "type": "consideration"
+                  }
+                ]
+              },
+              {
+                "id": 2,
+                "question": "Segunda pregunta principal sobre el proceso",
+                "type": "process",
+                "considerations": [
+                  ...
+                ]
+              }
+            ]
+          }
+          
+          Todas las preguntas y consideraciones deben estar en español y ser relevantes para el caso específico.`
         }
       ],
       response_format: { type: "json_object" }
@@ -437,7 +510,7 @@ async function generateQuestionsForCase(caseData, req, res, debugInfo) {
       
       // Guardar las preguntas en la base de datos
       if (caseData.id && questionData.questions && Array.isArray(questionData.questions)) {
-        debugInfo.steps.push(`Guardando ${questionData.questions.length} preguntas en la base de datos`);
+        debugInfo.steps.push(`Guardando preguntas en la base de datos`);
         
         // Primero eliminamos preguntas anteriores si hay más de 20
         const count = await Question.count({ where: { CaseId: caseData.id } });
@@ -456,15 +529,25 @@ async function generateQuestionsForCase(caseData, req, res, debugInfo) {
           }
         }
         
-        // Guardar las nuevas preguntas
+        // Guardar las nuevas preguntas y sus consideraciones
         for (const q of questionData.questions) {
+          // Guardar la pregunta principal
           const newQuestion = await Question.create({
             question: q.question,
-            type: q.type,
-            CaseId: caseData.id
+            type: "process",
+            CaseId: caseData.id,
+            metadata: JSON.stringify({
+              externalId: q.id,
+              considerations: q.considerations || []
+            })
           });
-          savedQuestions.push(newQuestion);
+          
+          savedQuestions.push({
+            ...newQuestion.toJSON(),
+            considerations: q.considerations || []
+          });
         }
+        
         debugInfo.steps.push(`${savedQuestions.length} preguntas guardadas exitosamente`);
       } else {
         debugInfo.steps.push('No se pudieron guardar las preguntas (caso sin ID o formato incorrecto)');
@@ -473,7 +556,7 @@ async function generateQuestionsForCase(caseData, req, res, debugInfo) {
       
       return res.json({
         case: caseData,
-        questions: savedQuestions.length > 0 ? savedQuestions : questionData.questions || [],
+        questions: savedQuestions,
         openaiConnected: true,
         debug: debugInfo
       });
@@ -589,7 +672,7 @@ app.post('/api/interviews', async (req, res) => {
 // Endpoint para añadir preguntas seleccionadas a una entrevista
 app.post('/api/interviews/:id/questions', async (req, res) => {
   try {
-    const { questionId, selected } = req.body;
+    const { questionId, considerationId, selected } = req.body;
     const interviewId = req.params.id;
     
     // Verificar que la entrevista existe
@@ -604,6 +687,85 @@ app.post('/api/interviews/:id/questions', async (req, res) => {
       return res.status(404).json({ message: 'Question not found' });
     }
     
+    // Si es una consideración específica, guardamos esa información en el metadato
+    let metadata = {};
+    if (considerationId) {
+      try {
+        // Intentar obtener los metadatos existentes
+        const existingSelection = await SelectedQuestion.findOne({
+          where: {
+            InterviewId: interviewId,
+            QuestionId: questionId
+          }
+        });
+        
+        if (existingSelection && existingSelection.metadata) {
+          metadata = JSON.parse(existingSelection.metadata);
+        }
+        
+        // Actualizar la lista de consideraciones seleccionadas
+        if (!metadata.selectedConsiderations) {
+          metadata.selectedConsiderations = [];
+        }
+        
+        if (selected) {
+          // Añadir consideración si no existe
+          if (!metadata.selectedConsiderations.includes(considerationId)) {
+            metadata.selectedConsiderations.push(considerationId);
+          }
+        } else {
+          // Eliminar consideración si existe
+          metadata.selectedConsiderations = metadata.selectedConsiderations.filter(
+            id => id !== considerationId
+          );
+        }
+        
+        // Si hay una selección existente, actualizarla
+        if (existingSelection) {
+          await existingSelection.update({
+            metadata: JSON.stringify(metadata)
+          });
+          return res.json({ 
+            message: 'Consideration selection updated', 
+            selectedConsiderations: metadata.selectedConsiderations 
+          });
+        }
+        
+        // Si no hay selección pero queremos guardar una consideración, debemos crear primero la pregunta
+        if (selected) {
+          // Contar cuántas preguntas ya están seleccionadas para determinar el orden
+          const selectedCount = await SelectedQuestion.count({
+            where: { InterviewId: interviewId }
+          });
+          
+          // Crear la selección con los metadatos
+          await SelectedQuestion.create({
+            InterviewId: interviewId,
+            QuestionId: questionId,
+            order: selectedCount + 1,
+            metadata: JSON.stringify(metadata)
+          });
+          
+          return res.json({ 
+            message: 'Question and consideration added to interview', 
+            order: selectedCount + 1,
+            selectedConsiderations: metadata.selectedConsiderations
+          });
+        }
+        
+        // Si llegamos aquí, estamos intentando deseleccionar una consideración de una pregunta no seleccionada
+        return res.json({ 
+          message: 'Consideration not selected because question is not selected',
+          selectedConsiderations: []
+        });
+        
+      } catch (error) {
+        console.error('Error processing consideration selection:', error);
+        return res.status(500).json({ message: 'Error processing consideration selection' });
+      }
+    }
+    
+    // Si no es una consideración, es una pregunta principal
     if (selected) {
       // Contar cuántas preguntas ya están seleccionadas para determinar el orden
       const selectedCount = await SelectedQuestion.count({
@@ -614,7 +776,8 @@ app.post('/api/interviews/:id/questions', async (req, res) => {
       await SelectedQuestion.create({
         InterviewId: interviewId,
         QuestionId: questionId,
-        order: selectedCount + 1
+        order: selectedCount + 1,
+        metadata: '{}'
       });
       
       res.json({ message: 'Question added to interview', order: selectedCount + 1 });

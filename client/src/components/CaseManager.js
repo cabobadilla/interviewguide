@@ -42,6 +42,13 @@ function CaseManager({ onClose }) {
     setEditingCaseId(null);
   };
   
+  const truncateText = (text, maxLength = 50) => {
+    if (!text) return '';
+    return text.length > maxLength 
+      ? text.substring(0, maxLength) + '...' 
+      : text;
+  };
+  
   if (loading) {
     return <div className="loading">Cargando casos de entrevista...</div>;
   }
@@ -77,6 +84,8 @@ function CaseManager({ onClose }) {
             <tr>
               <th>Nombre</th>
               <th>Descripción</th>
+              <th>Objetivo</th>
+              <th>Resultado Esperado</th>
               <th>Predeterminado</th>
               <th>Acciones</th>
             </tr>
@@ -85,7 +94,21 @@ function CaseManager({ onClose }) {
             {cases.map(caseItem => (
               <tr key={caseItem.id}>
                 <td>{caseItem.name}</td>
-                <td>{caseItem.description || <span className="empty-text">Sin descripción</span>}</td>
+                <td>
+                  {caseItem.description 
+                    ? truncateText(caseItem.description) 
+                    : <span className="empty-text">Sin descripción</span>}
+                </td>
+                <td>
+                  {caseItem.objective 
+                    ? truncateText(caseItem.objective) 
+                    : <span className="empty-text">Sin objetivo</span>}
+                </td>
+                <td>
+                  {caseItem.expectedOutcome 
+                    ? truncateText(caseItem.expectedOutcome) 
+                    : <span className="empty-text">Sin resultado</span>}
+                </td>
                 <td className="default-cell">
                   {caseItem.isDefault ? (
                     <span className="default-badge">Sí</span>

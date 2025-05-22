@@ -18,7 +18,50 @@ function InterviewDetail({ interviewId, onBack }) {
     
     try {
       const response = await axios.get(`/api/interviews/${interviewId}`);
-      setInterview(response.data);
+      
+      // Procesamos los datos para extraer consideraciones seleccionadas de los metadatos
+      const interviewData = response.data;
+      
+      // Para cada pregunta, procesamos sus consideraciones seleccionadas
+      if (interviewData.Questions && Array.isArray(interviewData.Questions)) {
+        interviewData.Questions = interviewData.Questions.map(question => {
+          // Extraer metadata si existe
+          let selectedConsiderations = [];
+          if (question.SelectedQuestion && question.SelectedQuestion.metadata) {
+            try {
+              const metadata = typeof question.SelectedQuestion.metadata === 'string' 
+                ? JSON.parse(question.SelectedQuestion.metadata)
+                : question.SelectedQuestion.metadata;
+              
+              selectedConsiderations = metadata.selectedConsiderations || [];
+            } catch (e) {
+              console.error('Error parsing metadata:', e);
+            }
+          }
+          
+          // Extraer consideraciones del campo metadata
+          let considerations = [];
+          if (question.metadata) {
+            try {
+              const metadata = typeof question.metadata === 'string'
+                ? JSON.parse(question.metadata)
+                : question.metadata;
+              
+              considerations = metadata.considerations || [];
+            } catch (e) {
+              console.error('Error parsing question metadata:', e);
+            }
+          }
+          
+          return {
+            ...question,
+            selectedConsiderations,
+            considerations
+          };
+        });
+      }
+      
+      setInterview(interviewData);
     } catch (error) {
       console.error('Error fetching interview details:', error);
       setError('No se pudieron cargar los detalles de la entrevista');
@@ -101,28 +144,42 @@ function InterviewDetail({ interviewId, onBack }) {
         {sortedQuestions.length === 0 ? (
           <p>No hay preguntas seleccionadas para esta entrevista.</p>
         ) : (
-          <table className="questions-table">
-            <thead>
-              <tr>
-                <th className="number-column">#</th>
-                <th>Pregunta</th>
-                <th>Tipo</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedQuestions.map((question, index) => (
-                <tr key={question.id}>
-                  <td className="number-column">{question.SelectedQuestion.order}</td>
-                  <td>{question.question}</td>
-                  <td className="type-column">
-                    <span className={`question-type ${question.type}`}>
-                      {question.type === 'process' ? 'Proceso' : 'Consideración'}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="selected-questions-list">
+            {sortedQuestions.map((question, index) => (
+              <div key={question.id} className="selected-question-item">
+                <div className="question-header">
+                  <span className="question-number">{question.SelectedQuestion.order}.</span>
+                  <span className="question-text">{question.question}</span>
+                  <span className={`question-type ${question.type}`}>
+                    Proceso
+                  </span>
+                </div>
+                
+                {/* Consideraciones seleccionadas */}
+                {question.considerations && question.considerations.length > 0 && (
+                  <div className="selected-considerations">
+                    <h4 className="considerations-title">Consideraciones Clave:</h4>
+                    <ul className="considerations-list">
+                      {question.considerations.map(consideration => {
+                        const isSelected = question.selectedConsiderations?.includes(consideration.id);
+                        return (
+                          <li 
+                            key={consideration.id} 
+                            className={`consideration-list-item ${isSelected ? 'selected' : ''}`}
+                          >
+                            <span className="consideration-text">{consideration.question}</span>
+                            {isSelected && (
+                              <span className="consideration-selected-badge">✓ Seleccionada</span>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>

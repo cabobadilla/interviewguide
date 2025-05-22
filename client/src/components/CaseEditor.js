@@ -4,6 +4,8 @@ import axios from 'axios';
 function CaseEditor({ caseId, onCancel, onSaved }) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [objective, setObjective] = useState('');
+  const [expectedOutcome, setExpectedOutcome] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -24,6 +26,8 @@ function CaseEditor({ caseId, onCancel, onSaved }) {
       
       setName(caseData.name || '');
       setDescription(caseData.description || '');
+      setObjective(caseData.objective || '');
+      setExpectedOutcome(caseData.expectedOutcome || '');
     } catch (error) {
       console.error('Error fetching case details:', error);
       setError('No se pudieron cargar los detalles del caso');
@@ -46,7 +50,9 @@ function CaseEditor({ caseId, onCancel, onSaved }) {
     try {
       const response = await axios.put(`/api/cases/${caseId}`, {
         name,
-        description
+        description,
+        objective,
+        expectedOutcome
       });
       
       if (onSaved) {
@@ -95,7 +101,37 @@ function CaseEditor({ caseId, onCancel, onSaved }) {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Descripción del caso (opcional)"
-            rows={4}
+            rows={3}
+            disabled={saving}
+          />
+        </div>
+        
+        <div className="form-group">
+          <label htmlFor="case-objective">
+            Objetivo:
+            <span className="field-hint"> (Se usará para generar mejores preguntas)</span>
+          </label>
+          <textarea
+            id="case-objective"
+            value={objective}
+            onChange={(e) => setObjective(e.target.value)}
+            placeholder="¿Cuál es el objetivo principal de esta entrevista?"
+            rows={3}
+            disabled={saving}
+          />
+        </div>
+        
+        <div className="form-group">
+          <label htmlFor="case-outcome">
+            Resultado Esperado:
+            <span className="field-hint"> (Se usará para generar mejores preguntas)</span>
+          </label>
+          <textarea
+            id="case-outcome"
+            value={expectedOutcome}
+            onChange={(e) => setExpectedOutcome(e.target.value)}
+            placeholder="¿Qué cualidades o conocimientos se buscan evaluar?"
+            rows={3}
             disabled={saving}
           />
         </div>
