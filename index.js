@@ -91,6 +91,12 @@ app.get('/api/cases', async (req, res) => {
         ['name', 'ASC']
       ]
     });
+    
+    // Log de depuración para ver qué casos están disponibles
+    console.log("Casos disponibles en la base de datos:", 
+      cases.map(c => ({ id: c.id, name: c.name, isDefault: c.isDefault }))
+    );
+    
     res.json(cases);
   } catch (error) {
     console.error('Error fetching cases:', error);
@@ -122,46 +128,84 @@ app.post('/api/cases/:id/questions', async (req, res) => {
   };
   
   try {
-    debugInfo.steps.push('Buscando caso en la base de datos (ID: ' + req.params.id + ')');
-    
     // Listar todos los casos para depuración
     const allCases = await Case.findAll();
-    console.log('Todos los casos en la base de datos:', allCases.map(c => ({ id: c.id, name: c.name })));
+    const casesInfo = allCases.map(c => ({ id: c.id, name: c.name }));
+    console.log('Todos los casos en la base de datos:', casesInfo);
+    debugInfo.cases = casesInfo;
+    debugInfo.steps.push(`Casos disponibles: ${allCases.length}`);
     
-    const caseData = await Case.findByPk(req.params.id);
+    let caseData = null;
+    const caseId = req.params.id;
     
+    // Si el ID es numérico, buscar por ID
+    if (!isNaN(caseId)) {
+      debugInfo.steps.push(`Buscando caso por ID: ${caseId}`);
+      caseData = await Case.findByPk(parseInt(caseId, 10));
+    }
+    
+    // Si no se encontró por ID o el ID no es numérico, buscar por nombre exacto
     if (!caseData) {
-      debugInfo.steps.push('Caso no encontrado en la base de datos');
-      
-      // Intentar buscar por nombre como alternativa
-      debugInfo.steps.push('Intentando buscar por nombre como alternativa');
-      const caseByName = await Case.findOne({ 
+      debugInfo.steps.push(`No se encontró por ID, buscando por nombre exacto: ${caseId}`);
+      caseData = await Case.findOne({ 
+        where: { name: caseId } 
+      });
+    }
+    
+    // Si aún no se encuentra, buscar por nombre parcial
+    if (!caseData) {
+      debugInfo.steps.push(`No se encontró por nombre exacto, buscando por coincidencia parcial`);
+      caseData = await Case.findOne({ 
         where: { 
           name: { 
-            [Op.like]: `%${req.params.id}%` 
+            [Op.like]: `%${caseId}%` 
           } 
         } 
       });
-      
-      if (caseByName) {
-        debugInfo.steps.push('Caso encontrado por nombre: ' + caseByName.name);
-        // Continuar con el caso encontrado por nombre
-        return await generateQuestionsForCase(caseByName, req, res, debugInfo);
+    }
+    
+    // Probar con los nombres predeterminados si aún no se encuentra
+    if (!caseData) {
+      const defaultNames = ['Estrategia Cloud', 'Eficiencia TI', 'Arquitectura Mobile'];
+      if (defaultNames.includes(caseId)) {
+        debugInfo.steps.push(`Buscando caso predeterminado: ${caseId}`);
+        caseData = await Case.findOne({ where: { name: caseId } });
       }
+    }
+    
+    // Buscar entre todos los casos
+    if (!caseData && allCases.length > 0) {
+      debugInfo.steps.push(`Usando el primer caso disponible como alternativa`);
+      caseData = allCases[0];
+    }
+    
+    // Si finalmente no se encuentra ningún caso
+    if (!caseData) {
+      debugInfo.steps.push(`No se encontró ningún caso, creando uno temporal`);
       
-      // Si no se encuentra ni por ID ni por nombre
-      return res.status(404).json({ 
-        message: 'Case not found. ID: ' + req.params.id,
-        debug: debugInfo
-      });
+      // Crear un caso temporal para la consulta
+      const tempCaseName = caseId || "Entrevista técnica";
+      caseData = { name: tempCaseName };
+      
+      // Opcionalmente, guardar este caso en la base de datos
+      try {
+        const newCase = await Case.create({
+          name: tempCaseName,
+          isDefault: false
+        });
+        debugInfo.steps.push(`Caso temporal creado en la base de datos: ${newCase.name} (ID: ${newCase.id})`);
+        caseData = newCase;
+      } catch (createError) {
+        debugInfo.steps.push(`Error al crear caso temporal: ${createError.message}`);
+      }
     }
     
     return await generateQuestionsForCase(caseData, req, res, debugInfo);
   } catch (error) {
-    debugInfo.steps.push('Error general: ' + error.message);
+    debugInfo.steps.push(`Error general: ${error.message}`);
     console.error('Error generating questions:', error);
     res.status(500).json({ 
-      message: 'Failed to generate questions: ' + error.message,
+      message: `Failed to generate questions: ${error.message}`,
       debug: debugInfo
     });
   }
@@ -252,21 +296,37 @@ if (process.env.NODE_ENV === 'production') {
 
 // Initialize default cases if none exist
 const seedDefaultCases = async () => {
-  const count = await Case.count();
-  if (count === 0) {
-    const defaultCases = [
-      { name: 'Estrategia Cloud', isDefault: true },
-      { name: 'Eficiencia TI', isDefault: true },
-      { name: 'Arquitectura Mobile', isDefault: true }
-    ];
+  try {
+    const count = await Case.count();
+    console.log(`Casos existentes en la base de datos: ${count}`);
     
-    await Case.bulkCreate(defaultCases);
-    console.log('Default cases seeded');
+    if (count === 0) {
+      console.log("Creando casos predeterminados...");
+      const defaultCases = [
+        { name: 'Estrategia Cloud', isDefault: true },
+        { name: 'Eficiencia TI', isDefault: true },
+        { name: 'Arquitectura Mobile', isDefault: true }
+      ];
+      
+      const createdCases = await Case.bulkCreate(defaultCases);
+      console.log('Casos predeterminados creados:', 
+        createdCases.map(c => ({ id: c.id, name: c.name }))
+      );
+    } else {
+      console.log("Ya existen casos en la base de datos, no se crearán predeterminados.");
+      // Mostrar casos existentes
+      const existingCases = await Case.findAll();
+      console.log('Casos existentes:', 
+        existingCases.map(c => ({ id: c.id, name: c.name }))
+      );
+    }
+  } catch (error) {
+    console.error('Error en seedDefaultCases:', error);
   }
 };
 
 // Sync database and start the server
-sequelize.sync({ force: true })
+sequelize.sync() // No forzar recreación para preservar datos
   .then(async () => {
     app.listen(PORT, async () => {
       console.log(`Server running on port ${PORT}`);
