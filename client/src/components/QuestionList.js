@@ -25,6 +25,38 @@ function QuestionList({ questions, caseId, onSelectionChange }) {
     }
   }, [caseId, questions, interviewId]);
   
+  // Cargar selecciones existentes si hay un interviewId
+  useEffect(() => {
+    const loadSelections = async () => {
+      if (!interviewId) return;
+      
+      try {
+        const response = await axios.get(`/api/interviews/${interviewId}/selections`);
+        
+        if (response.data) {
+          // Cargar preguntas seleccionadas
+          const questionSelections = {};
+          const considerationSelections = {};
+          
+          response.data.forEach(selection => {
+            if (selection.questionId && !selection.considerationId) {
+              questionSelections[selection.questionId] = selection.selected;
+            } else if (selection.questionId && selection.considerationId) {
+              considerationSelections[`${selection.questionId}-${selection.considerationId}`] = selection.selected;
+            }
+          });
+          
+          setSelectedQuestions(questionSelections);
+          setSelectedConsiderations(considerationSelections);
+        }
+      } catch (error) {
+        console.error('Error loading selections:', error);
+      }
+    };
+    
+    loadSelections();
+  }, [interviewId]);
+  
   // Manejar cambios en la selección de preguntas
   const handleQuestionSelection = async (questionId, isSelected) => {
     if (!interviewId) return;

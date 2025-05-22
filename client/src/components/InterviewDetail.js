@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import HomeButton from './HomeButton';
 
 function InterviewDetail({ interviewId, onBack }) {
   const [interview, setInterview] = useState(null);
@@ -89,19 +90,24 @@ function InterviewDetail({ interviewId, onBack }) {
     return (
       <div className="error-message">
         <p>{error}</p>
-        <button onClick={onBack}>Volver a la lista</button>
+        <div className="button-group">
+          <button onClick={fetchInterviewDetail}>Reintentar</button>
+          <button onClick={onBack}>Volver a la lista</button>
+        </div>
       </div>
     );
   }
   
   if (!interview) {
-    return null;
+    return <div className="loading">Cargando información...</div>;
   }
   
   // Ordenar las preguntas por el orden seleccionado
-  const sortedQuestions = [...interview.Questions].sort((a, b) => {
-    return a.SelectedQuestion.order - b.SelectedQuestion.order;
-  });
+  const sortedQuestions = interview.Questions && interview.Questions.length > 0 
+    ? [...interview.Questions].sort((a, b) => {
+        return (a.SelectedQuestion?.order || 0) - (b.SelectedQuestion?.order || 0);
+      })
+    : [];
   
   return (
     <div className="interview-detail">
@@ -148,7 +154,7 @@ function InterviewDetail({ interviewId, onBack }) {
             {sortedQuestions.map((question, index) => (
               <div key={question.id} className="selected-question-item">
                 <div className="question-header">
-                  <span className="question-number">{question.SelectedQuestion.order}.</span>
+                  <span className="question-number">{question.SelectedQuestion?.order || index + 1}.</span>
                   <span className="question-text">{question.question}</span>
                   <span className={`question-type ${question.type}`}>
                     Proceso

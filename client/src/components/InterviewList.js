@@ -3,7 +3,7 @@ import axios from 'axios';
 
 function InterviewList({ onSelectInterview }) {
   const [interviews, setInterviews] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
   useEffect(() => {
@@ -16,24 +16,28 @@ function InterviewList({ onSelectInterview }) {
     
     try {
       const response = await axios.get('/api/interviews');
-      setInterviews(response.data);
+      setInterviews(response.data || []);
     } catch (error) {
       console.error('Error fetching interviews:', error);
-      setError('No se pudieron cargar las entrevistas');
+      setError('No se pudieron cargar las entrevistas. ' + (error.message || ''));
     } finally {
       setLoading(false);
     }
   };
   
   const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return new Intl.DateTimeFormat('es', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    }).format(date);
+    try {
+      const date = new Date(dateString);
+      return new Intl.DateTimeFormat('es', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }).format(date);
+    } catch (e) {
+      return 'Fecha inválida';
+    }
   };
   
   if (loading) {
@@ -41,11 +45,49 @@ function InterviewList({ onSelectInterview }) {
   }
   
   if (error) {
-    return <div className="error-message">{error}</div>;
+    return (
+      <div className="error-message">
+        <h3>Error</h3>
+        <p>{error}</p>
+        <button 
+          onClick={fetchInterviews} 
+          className="refresh-button"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 2v6h-6"></path>
+            <path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path>
+            <path d="M3 22v-6h6"></path>
+            <path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
+          </svg>
+          Reintentar
+        </button>
+      </div>
+    );
   }
   
-  if (interviews.length === 0) {
-    return <p>No hay entrevistas registradas aún.</p>;
+  if (!interviews || interviews.length === 0) {
+    return (
+      <div className="interviews-container">
+        <h2>Entrevistas Realizadas</h2>
+        <div className="empty-message">
+          <p>No hay entrevistas registradas aún.</p>
+          <p>Utilice el generador de preguntas para crear una nueva entrevista.</p>
+        </div>
+        <button 
+          className="refresh-button" 
+          onClick={fetchInterviews} 
+          style={{ marginTop: '20px' }}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 2v6h-6"></path>
+            <path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path>
+            <path d="M3 22v-6h6"></path>
+            <path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
+          </svg>
+          Actualizar Lista
+        </button>
+      </div>
+    );
   }
   
   return (

@@ -349,18 +349,46 @@ select:focus, input:focus {
   color: #334155;
 }
 
+.empty-message {
+  padding: 20px;
+  text-align: center;
+  background-color: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  margin: 20px 0;
+}
+
+.empty-message p {
+  margin: 10px 0;
+  color: #64748b;
+}
+
 .error-message {
   background-color: #fef2f2;
   border-left: 4px solid #ef4444;
   padding: 16px;
   margin: 16px 0;
   border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
 }
 
 .error-message h3 {
   color: #b91c1c;
   margin-top: 0;
+  margin-bottom: 8px;
   font-weight: 600;
+}
+
+.error-message p {
+  margin-bottom: 16px;
+  color: #ef4444;
+}
+
+.error-message button {
+  align-self: flex-start;
+  margin-top: 10px;
 }
 
 .api-log {
@@ -1137,4 +1165,32 @@ select:focus, input:focus {
 .consideration-bullet .selection-label:has(input:checked) .consideration-text {
   color: #10b981;
   font-weight: 500;
+}
+
+/* Estilos para el botón de inicio */
+.home-button {
+  background-color: #3498db;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.home-button:hover {
+  background-color: #2980b9;
+  transform: translateY(-1px);
+}
+
+.back-navigation {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+  gap: 10px;
 } 

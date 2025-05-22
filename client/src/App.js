@@ -8,6 +8,7 @@ import DebugPanel from './components/DebugPanel';
 import InterviewList from './components/InterviewList';
 import InterviewDetail from './components/InterviewDetail';
 import CaseManager from './components/CaseManager';
+import HomeButton from './components/HomeButton';
 
 function App() {
   const [cases, setCases] = useState([]);
@@ -24,10 +25,18 @@ function App() {
   const [activeView, setActiveView] = useState('generator'); // 'generator', 'interviews', 'interview-detail'
   const [selectedInterviewId, setSelectedInterviewId] = useState(null);
   const [showCaseManager, setShowCaseManager] = useState(false);
+  const [navigationHistory, setNavigationHistory] = useState(['generator']);
 
   useEffect(() => {
     fetchCases();
   }, []);
+
+  // Guardar la historia de navegación para poder manejar el botón de inicio
+  useEffect(() => {
+    if (activeView && !navigationHistory.includes(activeView)) {
+      setNavigationHistory(prev => [...prev, activeView]);
+    }
+  }, [activeView, navigationHistory]);
 
   const fetchCases = async () => {
     try {
@@ -146,6 +155,17 @@ function App() {
     fetchCases(); // Refrescar la lista de casos al cerrar
   };
 
+  const handleGoHome = () => {
+    // Regresar a la vista principal
+    setActiveView('generator');
+    setShowCaseManager(false);
+    setSelectedInterviewId(null);
+    
+    // Limpiar cualquier estado de error para una experiencia más limpia
+    setApiError(null);
+    setNavigationHistory(['generator']);
+  };
+
   return (
     <div className="container">
       <div className="header">
@@ -172,6 +192,12 @@ function App() {
           Administrar Casos
         </button>
       </div>
+      
+      {activeView !== 'generator' && (
+        <div className="back-navigation">
+          <HomeButton onClick={handleGoHome} />
+        </div>
+      )}
       
       {showCaseManager && (
         <div className="card">

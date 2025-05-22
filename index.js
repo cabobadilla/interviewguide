@@ -852,6 +852,58 @@ app.get('/api/interviews/:id', async (req, res) => {
   }
 });
 
+// Endpoint para obtener todas las selecciones (preguntas y consideraciones) de una entrevista
+app.get('/api/interviews/:id/selections', async (req, res) => {
+  try {
+    const interviewId = req.params.id;
+    
+    // Verificar que la entrevista existe
+    const interview = await Interview.findByPk(interviewId);
+    if (!interview) {
+      return res.status(404).json({ message: 'Interview not found' });
+    }
+    
+    // Obtener todas las preguntas seleccionadas
+    const selectedQuestions = await SelectedQuestion.findAll({
+      where: { InterviewId: interviewId },
+      attributes: ['QuestionId', 'metadata']
+    });
+    
+    // Transformar el resultado para incluir las preguntas y consideraciones seleccionadas
+    const selections = [];
+    
+    // Añadir las preguntas principales seleccionadas
+    selectedQuestions.forEach(sq => {
+      // Añadir la pregunta principal
+      selections.push({
+        questionId: sq.QuestionId,
+        selected: true
+      });
+      
+      // Añadir consideraciones seleccionadas de esta pregunta
+      try {
+        const metadata = JSON.parse(sq.metadata || '{}');
+        if (metadata.selectedConsiderations && metadata.selectedConsiderations.length > 0) {
+          metadata.selectedConsiderations.forEach(considerationId => {
+            selections.push({
+              questionId: sq.QuestionId,
+              considerationId: considerationId,
+              selected: true
+            });
+          });
+        }
+      } catch (e) {
+        console.error('Error parsing metadata for question', sq.QuestionId, e);
+      }
+    });
+    
+    res.json(selections);
+  } catch (error) {
+    console.error('Error fetching selections:', error);
+    res.status(500).json({ message: 'Failed to fetch selections' });
+  }
+});
+
 // Sync database and start the server
 sequelize.sync() // No forzar recreación para preservar datos
   .then(async () => {
