@@ -51,6 +51,8 @@ function App() {
       setApiStatus('Conectando con el servidor...');
       const response = await axios.post(`/api/cases/${selectedCase}/questions`);
       
+      console.log('Respuesta completa:', response.data);
+      
       if (response.data.debug) {
         setDebugInfo(response.data.debug);
       }
@@ -59,10 +61,14 @@ function App() {
         setApiStatus('Conexión con OpenAI exitosa');
       }
       
-      setQuestions(response.data.questions || response.data);
+      // Extraer correctamente las preguntas del objeto de respuesta
+      const questionsData = response.data.questions || [];
+      console.log('Preguntas recibidas:', questionsData);
+      
+      setQuestions(questionsData);
       setApiStatus('Preguntas recibidas correctamente');
     } catch (error) {
-      console.error('Error fetching questions:', error);
+      console.error('Error completo:', error);
       setApiError(error.response?.data?.message || error.message || 'Error desconocido');
       setApiStatus('Error en la solicitud');
       

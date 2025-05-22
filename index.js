@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const { Sequelize, DataTypes } = require('sequelize');
+const { Sequelize, DataTypes, Op } = require('sequelize');
 const OpenAI = require('openai');
 const path = require('path');
 
@@ -122,87 +122,41 @@ app.post('/api/cases/:id/questions', async (req, res) => {
   };
   
   try {
-    debugInfo.steps.push('Buscando caso en la base de datos');
+    debugInfo.steps.push('Buscando caso en la base de datos (ID: ' + req.params.id + ')');
+    
+    // Listar todos los casos para depuración
+    const allCases = await Case.findAll();
+    console.log('Todos los casos en la base de datos:', allCases.map(c => ({ id: c.id, name: c.name })));
+    
     const caseData = await Case.findByPk(req.params.id);
     
     if (!caseData) {
-      debugInfo.steps.push('Caso no encontrado');
-      return res.status(404).json({ 
-        message: 'Case not found',
-        debug: debugInfo
-      });
-    }
-    
-    debugInfo.steps.push('Caso encontrado: ' + caseData.name);
-    
-    // Verify OpenAI API key is set
-    if (!process.env.OPENAI_API_KEY) {
-      debugInfo.steps.push('Error: API key de OpenAI no está configurada');
-      return res.status(500).json({ 
-        message: 'OpenAI API key is not set',
-        debug: debugInfo
-      });
-    }
-    
-    debugInfo.steps.push('Conectando con OpenAI API');
-    console.log('Connecting to OpenAI API with key starting with:', process.env.OPENAI_API_KEY.substring(0, 5));
-    
-    // Generate questions using OpenAI API
-    try {
-      const completion = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [
-          {
-            role: "system", 
-            content: "You are an expert technical interviewer for architects. Generate key questions for an interview."
-          },
-          {
-            role: "user", 
-            content: `Generate 5-8 key technical interview questions for an architect focusing on "${caseData.name}". 
-            Include both process-related questions and questions about key aspects to consider.
-            Format the response as a JSON array with objects containing 'question' and 'type' fields,
-            where type is either 'process' or 'consideration'.`
-          }
-        ],
-        response_format: { type: "json_object" }
+      debugInfo.steps.push('Caso no encontrado en la base de datos');
+      
+      // Intentar buscar por nombre como alternativa
+      debugInfo.steps.push('Intentando buscar por nombre como alternativa');
+      const caseByName = await Case.findOne({ 
+        where: { 
+          name: { 
+            [Op.like]: `%${req.params.id}%` 
+          } 
+        } 
       });
       
-      debugInfo.steps.push('Respuesta recibida de OpenAI');
-      debugInfo.openaiConnected = true;
-      console.log('OpenAI response received');
-      
-      try {
-        const questions = JSON.parse(completion.choices[0].message.content);
-        debugInfo.steps.push('Respuesta JSON parseada correctamente');
-        
-        res.json({
-          questions: questions,
-          openaiConnected: true,
-          debug: debugInfo
-        });
-      } catch (parseError) {
-        debugInfo.steps.push('Error al parsear JSON: ' + parseError.message);
-        console.error('Error parsing OpenAI response:', parseError);
-        res.status(500).json({ 
-          message: 'Failed to parse OpenAI response', 
-          rawResponse: completion.choices[0].message.content,
-          debug: debugInfo
-        });
+      if (caseByName) {
+        debugInfo.steps.push('Caso encontrado por nombre: ' + caseByName.name);
+        // Continuar con el caso encontrado por nombre
+        return await generateQuestionsForCase(caseByName, req, res, debugInfo);
       }
-    } catch (openAiError) {
-      debugInfo.steps.push('Error en la llamada a OpenAI: ' + openAiError.message);
-      console.error('OpenAI API error:', openAiError);
       
-      res.status(500).json({ 
-        message: 'Error connecting to OpenAI: ' + openAiError.message,
-        debug: debugInfo,
-        error: {
-          message: openAiError.message,
-          type: openAiError.type,
-          code: openAiError.code
-        }
+      // Si no se encuentra ni por ID ni por nombre
+      return res.status(404).json({ 
+        message: 'Case not found. ID: ' + req.params.id,
+        debug: debugInfo
       });
     }
+    
+    return await generateQuestionsForCase(caseData, req, res, debugInfo);
   } catch (error) {
     debugInfo.steps.push('Error general: ' + error.message);
     console.error('Error generating questions:', error);
@@ -212,6 +166,80 @@ app.post('/api/cases/:id/questions', async (req, res) => {
     });
   }
 });
+
+// Función separada para generar preguntas
+async function generateQuestionsForCase(caseData, req, res, debugInfo) {
+  debugInfo.steps.push('Caso encontrado: ' + caseData.name);
+  
+  // Verify OpenAI API key is set
+  if (!process.env.OPENAI_API_KEY) {
+    debugInfo.steps.push('Error: API key de OpenAI no está configurada');
+    return res.status(500).json({ 
+      message: 'OpenAI API key is not set',
+      debug: debugInfo
+    });
+  }
+  
+  debugInfo.steps.push('Conectando con OpenAI API');
+  console.log('Connecting to OpenAI API with key starting with:', process.env.OPENAI_API_KEY.substring(0, 5));
+  
+  // Generate questions using OpenAI API
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        {
+          role: "system", 
+          content: "You are an expert technical interviewer for architects. Generate key questions for an interview."
+        },
+        {
+          role: "user", 
+          content: `Generate 5-8 key technical interview questions for an architect focusing on "${caseData.name}". 
+          Include both process-related questions and questions about key aspects to consider.
+          Format the response as a JSON array with objects containing 'question' and 'type' fields,
+          where type is either 'process' or 'consideration'.`
+        }
+      ],
+      response_format: { type: "json_object" }
+    });
+    
+    debugInfo.steps.push('Respuesta recibida de OpenAI');
+    debugInfo.openaiConnected = true;
+    console.log('OpenAI response received');
+    
+    try {
+      const questions = JSON.parse(completion.choices[0].message.content);
+      debugInfo.steps.push('Respuesta JSON parseada correctamente');
+      
+      return res.json({
+        questions: questions,
+        openaiConnected: true,
+        debug: debugInfo
+      });
+    } catch (parseError) {
+      debugInfo.steps.push('Error al parsear JSON: ' + parseError.message);
+      console.error('Error parsing OpenAI response:', parseError);
+      return res.status(500).json({ 
+        message: 'Failed to parse OpenAI response', 
+        rawResponse: completion.choices[0].message.content,
+        debug: debugInfo
+      });
+    }
+  } catch (openAiError) {
+    debugInfo.steps.push('Error en la llamada a OpenAI: ' + openAiError.message);
+    console.error('OpenAI API error:', openAiError);
+    
+    return res.status(500).json({ 
+      message: 'Error connecting to OpenAI: ' + openAiError.message,
+      debug: debugInfo,
+      error: {
+        message: openAiError.message,
+        type: openAiError.type,
+        code: openAiError.code
+      }
+    });
+  }
+}
 
 // Serve static files if in production
 if (process.env.NODE_ENV === 'production') {
@@ -238,7 +266,7 @@ const seedDefaultCases = async () => {
 };
 
 // Sync database and start the server
-sequelize.sync()
+sequelize.sync({ force: true })
   .then(async () => {
     app.listen(PORT, async () => {
       console.log(`Server running on port ${PORT}`);

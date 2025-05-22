@@ -1,30 +1,53 @@
 import React from 'react';
 
 function QuestionList({ questions }) {
-  // Handle both array formats: direct array or questions inside an object
-  const questionItems = Array.isArray(questions) 
-    ? questions 
-    : (questions.questions || []);
+  console.log('QuestionList recibió:', questions);
+  
+  // Verificar si questions es un objeto con una propiedad 'questions'
+  let questionItems = [];
+  
+  if (Array.isArray(questions)) {
+    questionItems = questions;
+  } else if (questions && typeof questions === 'object') {
+    // Si es un objeto, buscar una propiedad 'questions' o alguna que parezca un array
+    const possibleArrays = Object.entries(questions)
+      .filter(([key, value]) => Array.isArray(value))
+      .map(([key, value]) => value);
+    
+    if (possibleArrays.length > 0) {
+      // Usar el primer array encontrado
+      questionItems = possibleArrays[0];
+    }
+  }
+  
+  console.log('Preguntas procesadas:', questionItems);
 
   return (
     <div className="question-list">
-      {questionItems.length === 0 && (
+      {(!questionItems || questionItems.length === 0) && (
         <p>No hay preguntas disponibles.</p>
       )}
       
-      {questionItems.map((question, index) => (
-        <div 
-          key={index} 
-          className={`question-item ${question.type}`}
-        >
-          <h3>
-            {question.type === 'process' 
-              ? '📋 Proceso: ' 
-              : '💡 Consideración: '}
-          </h3>
-          <p>{question.question}</p>
-        </div>
-      ))}
+      {questionItems && questionItems.length > 0 && questionItems.map((question, index) => {
+        // Determinar el tipo de pregunta
+        const questionType = question.type || 'general';
+        
+        return (
+          <div 
+            key={index} 
+            className={`question-item ${questionType}`}
+          >
+            <h3>
+              {questionType === 'process' 
+                ? '📋 Proceso: ' 
+                : questionType === 'consideration'
+                  ? '💡 Consideración: '
+                  : '❓ Pregunta: '}
+            </h3>
+            <p>{question.question || question.text || question}</p>
+          </div>
+        );
+      })}
     </div>
   );
 }
