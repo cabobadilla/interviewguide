@@ -118,69 +118,52 @@ function QuestionList({ questions, caseId, onSelectionChange }) {
         </thead>
         <tbody>
           {questions.map((processQuestion, index) => (
-            <React.Fragment key={processQuestion.id}>
-              <tr className="process-row">
-                <td className="number-column">{index + 1}</td>
-                <td className="process-column">
-                  <div className="question-content">
-                    <label className="selection-label process-selection">
-                      <input 
-                        type="checkbox" 
-                        checked={!!selectedQuestions[processQuestion.id]}
-                        onChange={(e) => handleQuestionSelection(processQuestion.id, e.target.checked)}
-                        disabled={saving}
-                      />
-                      <span className="checkmark"></span>
-                      <span className="question-text">{processQuestion.question}</span>
-                    </label>
+            <tr key={processQuestion.id} className="process-row">
+              <td className="number-column">{index + 1}</td>
+              <td className="process-column">
+                <div className="question-content">
+                  <label className="selection-label process-selection">
+                    <input 
+                      type="checkbox" 
+                      checked={!!selectedQuestions[processQuestion.id]}
+                      onChange={(e) => handleQuestionSelection(processQuestion.id, e.target.checked)}
+                      disabled={saving}
+                    />
+                    <span className="checkmark"></span>
+                    <span className="question-text">{processQuestion.question}</span>
+                  </label>
+                </div>
+              </td>
+              <td className="consideration-column">
+                {/* Lista de consideraciones con checkboxes */}
+                {processQuestion.considerations?.length > 0 ? (
+                  <div className="considerations-summary">
+                    <ul className="consideration-bullets">
+                      {processQuestion.considerations.map((consideration) => (
+                        <li key={consideration.id} className="consideration-bullet">
+                          <label className="selection-label consideration-selection">
+                            <input 
+                              type="checkbox" 
+                              checked={!!selectedConsiderations[`${processQuestion.id}-${consideration.id}`]}
+                              onChange={(e) => handleConsiderationSelection(
+                                processQuestion.id, 
+                                consideration.id, 
+                                e.target.checked
+                              )}
+                              disabled={saving}
+                            />
+                            <span className="checkmark"></span>
+                            <span className="consideration-text">{consideration.question}</span>
+                          </label>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                </td>
-                <td className="consideration-column">
-                  <div className="consideration-list">
-                    {processQuestion.considerations?.length > 0 ? (
-                      <ul className="consideration-items">
-                        {processQuestion.considerations.map((consideration) => (
-                          <li key={consideration.id} className="consideration-item">
-                            {consideration.question}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <div className="empty-cell">Sin consideraciones adicionales</div>
-                    )}
-                  </div>
-                </td>
-              </tr>
-              
-              {/* Consideraciones relacionadas con esta pregunta de proceso */}
-              {processQuestion.considerations?.map((consideration) => (
-                <tr key={consideration.id} className="consideration-row">
-                  <td className="number-column">
-                    <span className="consideration-number">{consideration.id}</span>
-                  </td>
-                  <td className="process-column">
-                    {/* Celda vacía en la columna de proceso */}
-                  </td>
-                  <td className="consideration-column">
-                    <div className="consideration-content">
-                      <label className="selection-label consideration-selection">
-                        <input 
-                          type="checkbox" 
-                          checked={!!selectedConsiderations[`${processQuestion.id}-${consideration.id}`]}
-                          onChange={(e) => handleConsiderationSelection(
-                            processQuestion.id, 
-                            consideration.id, 
-                            e.target.checked
-                          )}
-                        />
-                        <span className="checkmark"></span>
-                        <span className="consideration-text">{consideration.question}</span>
-                      </label>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </React.Fragment>
+                ) : (
+                  <div className="empty-cell">Sin consideraciones adicionales</div>
+                )}
+              </td>
+            </tr>
           ))}
         </tbody>
       </table>

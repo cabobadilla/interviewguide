@@ -1087,4 +1087,54 @@ select:focus, input:focus {
   border-radius: 4px;
   font-weight: 500;
   white-space: nowrap;
+}
+
+/* Ocultar filas duplicadas de consideraciones */
+.consideration-row.hidden {
+  display: none;
+}
+
+/* Estilos para la lista de consideraciones dentro de la celda */
+.considerations-summary {
+  margin: 0;
+  padding: 0;
+}
+
+.consideration-bullets {
+  margin: 0;
+  padding: 0;
+  list-style-type: none;
+}
+
+.consideration-bullet {
+  position: relative;
+  margin-bottom: 10px;
+  color: #475569;
+  line-height: 1.5;
+}
+
+.consideration-bullet:last-child {
+  margin-bottom: 0;
+}
+
+/* Modificar la apariencia de los checkboxes para consideraciones */
+.consideration-bullet .selection-label {
+  padding-left: 30px;
+  margin: 0;
+  display: flex;
+}
+
+.consideration-bullet .checkmark {
+  top: 3px;
+}
+
+.consideration-bullet .consideration-text {
+  font-size: 0.95rem;
+  color: #475569;
+}
+
+/* Destacar consideraciones seleccionadas */
+.consideration-bullet .selection-label:has(input:checked) .consideration-text {
+  color: #10b981;
+  font-weight: 500;
 } 
