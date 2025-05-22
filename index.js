@@ -58,9 +58,48 @@ const Question = sequelize.define('Question', {
   timestamps: true
 });
 
+// Define Interview Model
+const Interview = sequelize.define('Interview', {
+  interviewCode: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    unique: true
+  },
+  interviewDate: {
+    type: DataTypes.DATE,
+    defaultValue: DataTypes.NOW
+  },
+  candidateName: {
+    type: DataTypes.STRING,
+    defaultValue: ''
+  },
+  notes: {
+    type: DataTypes.TEXT,
+    defaultValue: ''
+  }
+}, {
+  timestamps: true
+});
+
+// Define Selected Question Model (preguntas seleccionadas en cada entrevista)
+const SelectedQuestion = sequelize.define('SelectedQuestion', {
+  order: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0
+  }
+}, {
+  timestamps: true
+});
+
 // Define relationships
 Case.hasMany(Question);
 Question.belongsTo(Case);
+
+Interview.belongsTo(Case);
+Case.hasMany(Interview);
+
+Interview.belongsToMany(Question, { through: SelectedQuestion });
+Question.belongsToMany(Interview, { through: SelectedQuestion });
 
 // Initialize OpenAI
 const openai = new OpenAI({
@@ -119,6 +158,62 @@ app.get('/api/cases', async (req, res) => {
   } catch (error) {
     console.error('Error fetching cases:', error);
     res.status(500).json({ message: 'Failed to fetch cases' });
+  }
+});
+
+// Endpoint para obtener un caso específico
+app.get('/api/cases/:id', async (req, res) => {
+  try {
+    const caseId = req.params.id;
+    const caseData = await Case.findByPk(caseId);
+    
+    if (!caseData) {
+      return res.status(404).json({ message: 'Case not found' });
+    }
+    
+    res.json(caseData);
+  } catch (error) {
+    console.error('Error fetching case:', error);
+    res.status(500).json({ message: 'Failed to fetch case' });
+  }
+});
+
+// Endpoint para actualizar un caso
+app.put('/api/cases/:id', async (req, res) => {
+  try {
+    const caseId = req.params.id;
+    const { name, description } = req.body;
+    
+    const caseData = await Case.findByPk(caseId);
+    
+    if (!caseData) {
+      return res.status(404).json({ message: 'Case not found' });
+    }
+    
+    // Verificar si el nuevo nombre ya existe (excluyendo el caso actual)
+    if (name && name !== caseData.name) {
+      const existingCase = await Case.findOne({ 
+        where: { 
+          name,
+          id: { [Op.ne]: caseId }
+        } 
+      });
+      
+      if (existingCase) {
+        return res.status(400).json({ message: 'Ya existe un caso con ese nombre' });
+      }
+    }
+    
+    // Actualizar los campos
+    await caseData.update({
+      name: name || caseData.name,
+      description: description !== undefined ? description : caseData.description
+    });
+    
+    res.json(caseData);
+  } catch (error) {
+    console.error('Error updating case:', error);
+    res.status(500).json({ message: 'Failed to update case' });
   }
 });
 
@@ -315,14 +410,15 @@ async function generateQuestionsForCase(caseData, req, res, debugInfo) {
       messages: [
         {
           role: "system", 
-          content: "You are an expert technical interviewer for architects. Generate key questions for an interview."
+          content: "Eres un experto entrevistador técnico para arquitectos. Genera preguntas clave para una entrevista en español."
         },
         {
           role: "user", 
-          content: `Generate 5-8 key technical interview questions for an architect focusing on "${caseData.name}". 
-          Include both process-related questions and questions about key aspects to consider.
-          Format the response as a JSON array with objects containing 'question' and 'type' fields,
-          where type is either 'process' or 'consideration'.`
+          content: `Genera entre 5 y 8 preguntas técnicas clave en español para una entrevista a un arquitecto enfocadas en "${caseData.name}". 
+          Incluye tanto preguntas relacionadas con el proceso como preguntas sobre aspectos clave a considerar.
+          Formatea la respuesta como un objeto JSON con una propiedad "questions" que contenga un array de objetos con campos "question" y "type",
+          donde "type" puede ser "process" (para preguntas de proceso) o "consideration" (para preguntas de consideraciones).
+          Todas las preguntas deben estar en español.`
         }
       ],
       response_format: { type: "json_object" }
@@ -445,6 +541,153 @@ const seedDefaultCases = async () => {
     console.error('Error en seedDefaultCases:', error);
   }
 };
+
+// Generar código incremental para entrevistas
+const generateInterviewCode = async () => {
+  try {
+    const count = await Interview.count();
+    const nextNumber = count + 1;
+    const today = new Date();
+    const year = today.getFullYear().toString().slice(-2);
+    const month = (today.getMonth() + 1).toString().padStart(2, '0');
+    return `E${year}${month}-${nextNumber.toString().padStart(4, '0')}`;
+  } catch (error) {
+    console.error('Error generating interview code:', error);
+    return `E-${Date.now()}`;
+  }
+};
+
+// Endpoint para crear una nueva entrevista
+app.post('/api/interviews', async (req, res) => {
+  try {
+    const { caseId, candidateName = '', notes = '' } = req.body;
+    
+    // Verificar que el caso existe
+    const caseData = await Case.findByPk(caseId);
+    if (!caseData) {
+      return res.status(404).json({ message: 'Case not found' });
+    }
+    
+    // Generar código único
+    const interviewCode = await generateInterviewCode();
+    
+    // Crear la entrevista
+    const interview = await Interview.create({
+      interviewCode,
+      candidateName,
+      notes,
+      CaseId: caseId
+    });
+    
+    res.status(201).json(interview);
+  } catch (error) {
+    console.error('Error creating interview:', error);
+    res.status(500).json({ message: 'Failed to create interview' });
+  }
+});
+
+// Endpoint para añadir preguntas seleccionadas a una entrevista
+app.post('/api/interviews/:id/questions', async (req, res) => {
+  try {
+    const { questionId, selected } = req.body;
+    const interviewId = req.params.id;
+    
+    // Verificar que la entrevista existe
+    const interview = await Interview.findByPk(interviewId);
+    if (!interview) {
+      return res.status(404).json({ message: 'Interview not found' });
+    }
+    
+    // Verificar que la pregunta existe
+    const question = await Question.findByPk(questionId);
+    if (!question) {
+      return res.status(404).json({ message: 'Question not found' });
+    }
+    
+    if (selected) {
+      // Contar cuántas preguntas ya están seleccionadas para determinar el orden
+      const selectedCount = await SelectedQuestion.count({
+        where: { InterviewId: interviewId }
+      });
+      
+      // Añadir la pregunta seleccionada
+      await SelectedQuestion.create({
+        InterviewId: interviewId,
+        QuestionId: questionId,
+        order: selectedCount + 1
+      });
+      
+      res.json({ message: 'Question added to interview', order: selectedCount + 1 });
+    } else {
+      // Eliminar la pregunta si ya no está seleccionada
+      await SelectedQuestion.destroy({
+        where: {
+          InterviewId: interviewId,
+          QuestionId: questionId
+        }
+      });
+      
+      // Reordenar las preguntas restantes
+      const selectedQuestions = await SelectedQuestion.findAll({
+        where: { InterviewId: interviewId },
+        order: [['order', 'ASC']]
+      });
+      
+      for (let i = 0; i < selectedQuestions.length; i++) {
+        await selectedQuestions[i].update({ order: i + 1 });
+      }
+      
+      res.json({ message: 'Question removed from interview' });
+    }
+  } catch (error) {
+    console.error('Error updating selected questions:', error);
+    res.status(500).json({ message: 'Failed to update selected questions' });
+  }
+});
+
+// Endpoint para obtener entrevistas
+app.get('/api/interviews', async (req, res) => {
+  try {
+    const interviews = await Interview.findAll({
+      include: [
+        { model: Case },
+        { model: Question }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+    
+    res.json(interviews);
+  } catch (error) {
+    console.error('Error fetching interviews:', error);
+    res.status(500).json({ message: 'Failed to fetch interviews' });
+  }
+});
+
+// Endpoint para obtener una entrevista específica con sus preguntas seleccionadas
+app.get('/api/interviews/:id', async (req, res) => {
+  try {
+    const interview = await Interview.findByPk(req.params.id, {
+      include: [
+        { model: Case },
+        { 
+          model: Question,
+          through: {
+            attributes: ['order']
+          }
+        }
+      ]
+    });
+    
+    if (!interview) {
+      return res.status(404).json({ message: 'Interview not found' });
+    }
+    
+    res.json(interview);
+  } catch (error) {
+    console.error('Error fetching interview:', error);
+    res.status(500).json({ message: 'Failed to fetch interview' });
+  }
+});
 
 // Sync database and start the server
 sequelize.sync() // No forzar recreación para preservar datos

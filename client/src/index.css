@@ -88,6 +88,30 @@ select:focus, input:focus {
   margin-top: 20px;
 }
 
+.interview-header {
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: #f0f9ff;
+  border-radius: 8px;
+  border-left: 4px solid #3498db;
+}
+
+.interview-code {
+  font-weight: 600;
+  color: #1e3a8a;
+  background: #eef2ff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-family: 'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
+  font-size: 0.95rem;
+}
+
+.interview-status {
+  margin-top: 8px;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
 .questions-table {
   width: 100%;
   border-collapse: collapse;
@@ -136,7 +160,11 @@ select:focus, input:focus {
 }
 
 .process-column, .consideration-column {
-  width: calc(50% - 50px);
+  width: calc(40% - 25px);
+}
+
+.selection-column {
+  width: 150px;
 }
 
 .process-column {
@@ -152,6 +180,83 @@ select:focus, input:focus {
   color: #cbd5e1;
   text-align: center;
   font-style: italic;
+}
+
+/* Estilos para checkboxes de selección */
+.selection-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.selection-label {
+  display: flex;
+  align-items: center;
+  position: relative;
+  padding-left: 30px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 0.9rem;
+}
+
+.selection-label input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+.checkmark {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 20px;
+  width: 20px;
+  background-color: #f0f0f0;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  border: 1px solid #d1d5db;
+}
+
+.selection-label:hover input ~ .checkmark {
+  background-color: #e5e7eb;
+}
+
+.selection-label input:checked ~ .checkmark {
+  background-color: #3498db;
+  border-color: #2980b9;
+}
+
+.checkmark:after {
+  content: "";
+  position: absolute;
+  display: none;
+}
+
+.selection-label input:checked ~ .checkmark:after {
+  display: block;
+}
+
+.selection-label .checkmark:after {
+  left: 7px;
+  top: 3px;
+  width: 5px;
+  height: 10px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.selection-text {
+  margin-left: 5px;
+  color: #4b5563;
+}
+
+/* Estilos específicos para los tipos de preguntas */
+.selection-label:has(input:checked) .selection-text {
+  color: #1e3a8a;
+  font-weight: 500;
 }
 
 .form-group {
@@ -370,4 +475,422 @@ select:focus, input:focus {
     stroke-dasharray: 90, 150;
     stroke-dashoffset: -124;
   }
+}
+
+.selected-count {
+  background-color: #eef2ff;
+  color: #1e3a8a;
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  border: 1px solid #c7d2fe;
+}
+
+/* Estilos de navegación */
+.navigation {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  background-color: #f8fafc;
+  padding: 10px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.nav-button {
+  background-color: #e5e7eb;
+  color: #4b5563;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.nav-button:hover {
+  background-color: #d1d5db;
+}
+
+.nav-button.active {
+  background-color: #3498db;
+  color: white;
+}
+
+.nav-button.active:hover {
+  background-color: #2980b9;
+}
+
+/* Estilos para la lista de entrevistas */
+.interviews-container {
+  width: 100%;
+}
+
+.interviews-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 20px 0;
+  font-size: 15px;
+  background-color: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.interviews-table th {
+  text-align: left;
+  padding: 16px;
+  background-color: #f8fafc;
+  font-weight: 600;
+  color: #1e3a8a;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.interviews-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.interviews-table tr:last-child td {
+  border-bottom: none;
+}
+
+.interviews-table tr:hover {
+  background-color: #f9fafb;
+}
+
+.interview-code-cell {
+  font-family: 'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
+  font-size: 0.9rem;
+  color: #1e3a8a;
+  background-color: #eef2ff;
+  padding: 4px 8px !important;
+  border-radius: 4px;
+}
+
+.question-count-cell {
+  text-align: center;
+  font-size: 0.9rem;
+  color: #64748b;
+}
+
+.view-button {
+  background-color: #3498db;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background-color 0.2s;
+}
+
+.view-button:hover {
+  background-color: #2980b9;
+}
+
+/* Estilos para el detalle de entrevista */
+.interview-detail {
+  width: 100%;
+}
+
+.interview-detail .interview-header {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 24px;
+}
+
+.back-button {
+  background-color: #f1f5f9;
+  color: #475569;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+}
+
+.back-button:hover {
+  background-color: #e2e8f0;
+}
+
+.interview-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+  background-color: #f8fafc;
+  padding: 16px;
+  border-radius: 8px;
+}
+
+.meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.meta-label {
+  font-size: 0.85rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.meta-value {
+  font-size: 1rem;
+  color: #334155;
+}
+
+.interview-notes {
+  background-color: #fffbeb;
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+  border-left: 4px solid #fbbf24;
+}
+
+.interview-notes h3 {
+  margin-top: 0;
+  color: #92400e;
+  font-size: 1.1rem;
+  margin-bottom: 8px;
+}
+
+.selected-questions {
+  margin-top: 24px;
+}
+
+.selected-questions h3 {
+  margin-bottom: 16px;
+  color: #334155;
+}
+
+.question-type {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.question-type.process {
+  background-color: #e0f2fe;
+  color: #0369a1;
+}
+
+.question-type.consideration {
+  background-color: #f0fdf4;
+  color: #166534;
+}
+
+.type-column {
+  width: 140px;
+  text-align: center;
+}
+
+/* Estilos para el administrador de casos */
+.case-manager {
+  width: 100%;
+}
+
+.case-manager-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.case-manager-header h2 {
+  margin: 0;
+}
+
+.close-button {
+  background-color: #f1f5f9;
+  color: #475569;
+  border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close-button:hover {
+  background-color: #e2e8f0;
+  color: #1e293b;
+}
+
+.cases-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 20px 0;
+  font-size: 15px;
+  background-color: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.cases-table th {
+  text-align: left;
+  padding: 16px;
+  background-color: #f8fafc;
+  font-weight: 600;
+  color: #1e3a8a;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.cases-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.cases-table tr:last-child td {
+  border-bottom: none;
+}
+
+.cases-table tr:hover {
+  background-color: #f9fafb;
+}
+
+.empty-text {
+  color: #94a3b8;
+  font-style: italic;
+  font-size: 0.9rem;
+}
+
+.default-cell {
+  text-align: center;
+}
+
+.default-badge {
+  background-color: #dbeafe;
+  color: #1e40af;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.actions-cell {
+  text-align: center;
+}
+
+.edit-button {
+  background-color: #3498db;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background-color 0.2s;
+}
+
+.edit-button:hover {
+  background-color: #2980b9;
+}
+
+/* Estilos para el editor de casos */
+.case-editor {
+  width: 100%;
+}
+
+.case-editor h2 {
+  margin-top: 0;
+  margin-bottom: 20px;
+}
+
+.case-editor .form-group {
+  margin-bottom: 20px;
+}
+
+.case-editor label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #334155;
+}
+
+.case-editor input,
+.case-editor textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+.case-editor input:focus,
+.case-editor textarea:focus {
+  border-color: #3498db;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
+.case-editor textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+.button-group {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.save-button {
+  background-color: #10b981;
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.save-button:hover {
+  background-color: #059669;
+}
+
+.save-button:disabled {
+  background-color: #d1d5db;
+  cursor: not-allowed;
+}
+
+.cancel-button {
+  background-color: #f1f5f9;
+  color: #475569;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.cancel-button:hover {
+  background-color: #e2e8f0;
+}
+
+.cancel-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 } 
