@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import API from '../utils/api';
 
 function QuestionList({ questions, caseId, onSelectionChange }) {
   const [selectedQuestions, setSelectedQuestions] = useState({});
@@ -12,7 +12,7 @@ function QuestionList({ questions, caseId, onSelectionChange }) {
     // Crear una nueva entrevista al cargar el componente
     const createNewInterview = async () => {
       try {
-        const response = await axios.post('/api/interviews', { caseId });
+        const response = await API.post('/api/interviews', { caseId });
         setInterviewId(response.data.id);
         setInterviewCode(response.data.interviewCode);
       } catch (error) {
@@ -31,7 +31,7 @@ function QuestionList({ questions, caseId, onSelectionChange }) {
       if (!interviewId) return;
       
       try {
-        const response = await axios.get(`/api/interviews/${interviewId}/selections`);
+        const response = await API.get(`/api/interviews/${interviewId}/selections`);
         
         if (response.data) {
           // Cargar preguntas seleccionadas
@@ -71,7 +71,7 @@ function QuestionList({ questions, caseId, onSelectionChange }) {
       }));
       
       // Guardar selección en el servidor
-      await axios.post(`/api/interviews/${interviewId}/questions`, {
+      await API.post(`/api/interviews/${interviewId}/questions`, {
         questionId,
         selected: isSelected
       });
@@ -106,7 +106,7 @@ function QuestionList({ questions, caseId, onSelectionChange }) {
       }));
       
       // Guardar selección en el servidor
-      await axios.post(`/api/interviews/${interviewId}/questions`, {
+      await API.post(`/api/interviews/${interviewId}/questions`, {
         questionId,
         considerationId,
         selected: isSelected

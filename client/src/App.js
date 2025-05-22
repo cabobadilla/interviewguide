@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import API from './utils/api';
 import CaseSelector from './components/CaseSelector';
 import CaseForm from './components/CaseForm';
 import QuestionList from './components/QuestionList';
@@ -40,7 +40,7 @@ function App() {
 
   const fetchCases = async () => {
     try {
-      const response = await axios.get('/api/cases');
+      const response = await API.get('/api/cases');
       setCases(response.data);
     } catch (error) {
       console.error('Error fetching cases:', error);
@@ -76,7 +76,7 @@ function App() {
         ? `/api/cases/${selectedCase}/questions?refresh=true` 
         : `/api/cases/${selectedCase}/questions`;
       
-      const response = await axios.post(url);
+      const response = await API.post(url);
       
       console.log('Respuesta completa:', response.data);
       
@@ -128,7 +128,7 @@ function App() {
 
   const handleAddCase = async (caseData) => {
     try {
-      await axios.post('/api/cases', caseData);
+      await API.post('/api/cases', caseData);
       fetchCases();
       setShowForm(false);
     } catch (error) {

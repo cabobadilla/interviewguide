@@ -1,63 +1,74 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import API from '../utils/api';
 
 function ConnectionTest() {
-  const [testing, setTesting] = useState(false);
-  const [result, setResult] = useState(null);
-  const [expanded, setExpanded] = useState(false);
-
+  const [testResult, setTestResult] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
+  
   const testConnection = async () => {
-    setTesting(true);
-    setResult(null);
+    setLoading(true);
+    setTestResult(null);
     
     try {
-      const response = await axios.get('/api/test-openai');
-      setResult({
+      // Determinar entorno
+      const isProduction = process.env.NODE_ENV === 'production';
+      const baseUrl = isProduction ? '' : 'http://localhost:3000';
+      
+      const response = await API.get('/api/test-openai');
+      
+      setTestResult({
         success: response.data.success,
-        message: response.data.message,
-        data: response.data
+        message: `${response.data.message} (${isProduction ? 'Producción' : 'Desarrollo'})`,
+        details: response.data,
+        error: null
       });
     } catch (error) {
-      setResult({
+      setTestResult({
         success: false,
-        message: 'Error al conectar con OpenAI',
+        message: `Error de conexión: ${error.message}`,
+        details: null,
         error: error.response?.data || error.message
       });
     } finally {
-      setTesting(false);
+      setLoading(false);
     }
   };
-
+  
   return (
     <div className="connection-test">
-      <div className="connection-test-header" onClick={() => setExpanded(!expanded)}>
-        <h3>Herramientas de diagnóstico {expanded ? '▼' : '►'}</h3>
+      <div 
+        className="connection-test-header"
+        onClick={() => setShowDetails(!showDetails)}
+      >
+        <h3>Diagnóstico de Conexión</h3>
+        <span>{showDetails ? '▲' : '▼'}</span>
       </div>
       
-      {expanded && (
+      {showDetails && (
         <div className="connection-test-content">
           <button 
-            onClick={testConnection} 
-            disabled={testing}
-            className="test-button"
+            className="test-button" 
+            onClick={testConnection}
+            disabled={loading}
           >
-            {testing ? 'Probando conexión...' : 'Probar conexión con OpenAI'}
+            {loading ? 'Probando...' : 'Probar Conexión con OpenAI API'}
           </button>
           
-          {result && (
-            <div className={`test-result ${result.success ? 'success' : 'error'}`}>
-              <h4>{result.success ? '✅ Conexión exitosa' : '❌ Error de conexión'}</h4>
-              <p>{result.message}</p>
+          {testResult && (
+            <div className={`test-result ${testResult.success ? 'success' : 'error'}`}>
+              <h4>{testResult.success ? '✓ Conexión Exitosa' : '✗ Error de Conexión'}</h4>
+              <p>{testResult.message}</p>
               
-              {result.data && (
+              {testResult.details && (
                 <pre className="api-log">
-                  {JSON.stringify(result.data, null, 2)}
+                  {JSON.stringify(testResult.details, null, 2)}
                 </pre>
               )}
               
-              {result.error && (
+              {testResult.error && (
                 <pre className="api-log error">
-                  {JSON.stringify(result.error, null, 2)}
+                  {JSON.stringify(testResult.error, null, 2)}
                 </pre>
               )}
             </div>

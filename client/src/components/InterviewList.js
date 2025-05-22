@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import API from '../utils/api';
 
 function InterviewList({ onSelectInterview }) {
   const [interviews, setInterviews] = useState([]);
@@ -15,7 +15,7 @@ function InterviewList({ onSelectInterview }) {
     setError(null);
     
     try {
-      const response = await axios.get('/api/interviews');
+      const response = await API.get('/api/interviews');
       setInterviews(response.data || []);
     } catch (error) {
       console.error('Error fetching interviews:', error);

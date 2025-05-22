@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import API from '../utils/api';
 import HomeButton from './HomeButton';
 
 function InterviewDetail({ interviewId, onBack }) {
@@ -18,7 +18,7 @@ function InterviewDetail({ interviewId, onBack }) {
     setError(null);
     
     try {
-      const response = await axios.get(`/api/interviews/${interviewId}`);
+      const response = await API.get(`/api/interviews/${interviewId}`);
       
       // Procesamos los datos para extraer consideraciones seleccionadas de los metadatos
       const interviewData = response.data;
