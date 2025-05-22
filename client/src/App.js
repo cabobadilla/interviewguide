@@ -3,6 +3,8 @@ import axios from 'axios';
 import CaseSelector from './components/CaseSelector';
 import CaseForm from './components/CaseForm';
 import QuestionList from './components/QuestionList';
+import ConnectionTest from './components/ConnectionTest';
+import DebugPanel from './components/DebugPanel';
 
 function App() {
   const [cases, setCases] = useState([]);
@@ -10,6 +12,10 @@ function App() {
   const [showForm, setShowForm] = useState(false);
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [apiStatus, setApiStatus] = useState(null);
+  const [apiError, setApiError] = useState(null);
+  const [debugInfo, setDebugInfo] = useState(null);
+  const [showDebug, setShowDebug] = useState(false);
 
   useEffect(() => {
     fetchCases();
@@ -27,17 +33,42 @@ function App() {
   const handleCaseSelect = (caseId) => {
     setSelectedCase(caseId);
     setQuestions([]);
+    setApiStatus(null);
+    setApiError(null);
+    setDebugInfo(null);
   };
 
   const handleShowQuestions = async () => {
     if (!selectedCase) return;
     
     setLoading(true);
+    setApiStatus('Iniciando solicitud a la API...');
+    setApiError(null);
+    setQuestions([]);
+    setDebugInfo(null);
+    
     try {
+      setApiStatus('Conectando con el servidor...');
       const response = await axios.post(`/api/cases/${selectedCase}/questions`);
+      
+      if (response.data.debug) {
+        setDebugInfo(response.data.debug);
+      }
+      
+      if (response.data.openaiConnected) {
+        setApiStatus('Conexión con OpenAI exitosa');
+      }
+      
       setQuestions(response.data.questions || response.data);
+      setApiStatus('Preguntas recibidas correctamente');
     } catch (error) {
       console.error('Error fetching questions:', error);
+      setApiError(error.response?.data?.message || error.message || 'Error desconocido');
+      setApiStatus('Error en la solicitud');
+      
+      if (error.response?.data?.debug) {
+        setDebugInfo(error.response.data.debug);
+      }
     } finally {
       setLoading(false);
     }
@@ -67,15 +98,23 @@ function App() {
           onSelect={handleCaseSelect} 
         />
         
-        <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
+        <div style={{ marginTop: '20px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
           <button onClick={handleShowQuestions} disabled={!selectedCase}>
             Mostrar Preguntas
           </button>
           <button onClick={() => setShowForm(!showForm)}>
             {showForm ? 'Cancelar' : 'Agregar Nuevo Caso'}
           </button>
+          <button 
+            onClick={() => setShowDebug(!showDebug)} 
+            style={{ marginLeft: 'auto', background: '#7f8c8d' }}
+          >
+            {showDebug ? 'Ocultar Herramientas' : 'Mostrar Herramientas de Diagnóstico'}
+          </button>
         </div>
       </div>
+      
+      {showDebug && <ConnectionTest />}
       
       {showForm && (
         <div className="card">
@@ -85,10 +124,28 @@ function App() {
       )}
       
       {loading && (
-        <div className="loading">
-          Generando preguntas para la entrevista...
+        <div className="loading card">
+          <h3>Estado de la solicitud:</h3>
+          <p>Generando preguntas para la entrevista...</p>
+          {apiStatus && <div className="status-message">{apiStatus}</div>}
         </div>
       )}
+      
+      {apiError && (
+        <div className="error-message card">
+          <h3>Error:</h3>
+          <p>{apiError}</p>
+        </div>
+      )}
+      
+      {!loading && apiStatus && !apiError && (
+        <div className="status-message card">
+          <h3>Estado:</h3>
+          <p>{apiStatus}</p>
+        </div>
+      )}
+      
+      {showDebug && debugInfo && <DebugPanel debug={debugInfo} />}
       
       {questions.length > 0 && (
         <div className="card">
