@@ -114,7 +114,6 @@ function QuestionList({ questions, caseId, onSelectionChange }) {
             <th className="number-column">#</th>
             <th className="process-column">Preguntas del Proceso</th>
             <th className="consideration-column">Consideraciones Clave</th>
-            <th className="selection-column">Selección</th>
           </tr>
         </thead>
         <tbody>
@@ -124,7 +123,16 @@ function QuestionList({ questions, caseId, onSelectionChange }) {
                 <td className="number-column">{index + 1}</td>
                 <td className="process-column">
                   <div className="question-content">
-                    {processQuestion.question}
+                    <label className="selection-label process-selection">
+                      <input 
+                        type="checkbox" 
+                        checked={!!selectedQuestions[processQuestion.id]}
+                        onChange={(e) => handleQuestionSelection(processQuestion.id, e.target.checked)}
+                        disabled={saving}
+                      />
+                      <span className="checkmark"></span>
+                      <span className="question-text">{processQuestion.question}</span>
+                    </label>
                   </div>
                 </td>
                 <td className="consideration-column">
@@ -142,20 +150,6 @@ function QuestionList({ questions, caseId, onSelectionChange }) {
                     )}
                   </div>
                 </td>
-                <td className="selection-column">
-                  <div className="selection-controls">
-                    <label className="selection-label">
-                      <input 
-                        type="checkbox" 
-                        checked={!!selectedQuestions[processQuestion.id]}
-                        onChange={(e) => handleQuestionSelection(processQuestion.id, e.target.checked)}
-                        disabled={saving}
-                      />
-                      <span className="checkmark"></span>
-                      <span className="selection-text">Usar Pregunta</span>
-                    </label>
-                  </div>
-                </td>
               </tr>
               
               {/* Consideraciones relacionadas con esta pregunta de proceso */}
@@ -169,11 +163,6 @@ function QuestionList({ questions, caseId, onSelectionChange }) {
                   </td>
                   <td className="consideration-column">
                     <div className="consideration-content">
-                      {consideration.question}
-                    </div>
-                  </td>
-                  <td className="selection-column">
-                    <div className="selection-controls">
                       <label className="selection-label consideration-selection">
                         <input 
                           type="checkbox" 
@@ -185,7 +174,7 @@ function QuestionList({ questions, caseId, onSelectionChange }) {
                           )}
                         />
                         <span className="checkmark"></span>
-                        <span className="selection-text">Usar Consideración</span>
+                        <span className="consideration-text">{consideration.question}</span>
                       </label>
                     </div>
                   </td>

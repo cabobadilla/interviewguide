@@ -194,7 +194,6 @@ select:focus, input:focus {
 
 .consideration-content {
   padding-left: 10px;
-  border-left: 2px solid #e5e7eb;
   color: #475569;
 }
 
@@ -205,12 +204,12 @@ select:focus, input:focus {
   font-weight: 500;
 }
 
-.process-column, .consideration-column {
-  width: calc(40% - 25px);
+.process-column {
+  width: 45%;
 }
 
-.selection-column {
-  width: 150px;
+.consideration-column {
+  width: 45%;
 }
 
 .process-column {
@@ -222,6 +221,16 @@ select:focus, input:focus {
   color: #334155;
 }
 
+.question-text {
+  margin-left: 8px;
+  line-height: 1.5;
+}
+
+.consideration-text {
+  margin-left: 8px;
+  line-height: 1.5;
+}
+
 .empty-cell {
   color: #cbd5e1;
   text-align: center;
@@ -229,24 +238,22 @@ select:focus, input:focus {
 }
 
 /* Estilos para checkboxes de selección */
-.selection-controls {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
 .selection-label {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   position: relative;
   padding-left: 30px;
   cursor: pointer;
   user-select: none;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
 }
 
-.selection-label.consideration-selection {
-  font-size: 0.85rem;
+.process-selection {
+  font-weight: 500;
+}
+
+.consideration-selection {
+  font-size: 0.9rem;
 }
 
 .selection-label input {
@@ -259,10 +266,10 @@ select:focus, input:focus {
 
 .checkmark {
   position: absolute;
-  top: 0;
+  top: 3px;
   left: 0;
-  height: 20px;
-  width: 20px;
+  height: 18px;
+  width: 18px;
   background-color: #f0f0f0;
   border-radius: 4px;
   transition: all 0.2s ease;
@@ -294,27 +301,22 @@ select:focus, input:focus {
 }
 
 .selection-label .checkmark:after {
-  left: 7px;
-  top: 3px;
-  width: 5px;
-  height: 10px;
+  left: 6px;
+  top: 2px;
+  width: 4px;
+  height: 9px;
   border: solid white;
   border-width: 0 2px 2px 0;
   transform: rotate(45deg);
 }
 
-.selection-text {
-  margin-left: 5px;
-  color: #4b5563;
-}
-
 /* Estilos específicos para los tipos de preguntas */
-.selection-label:has(input:checked) .selection-text {
+.selection-label:has(input:checked) .question-text {
   color: #1e3a8a;
-  font-weight: 500;
+  font-weight: 600;
 }
 
-.consideration-selection:has(input:checked) .selection-text {
+.consideration-selection:has(input:checked) .consideration-text {
   color: #10b981;
   font-weight: 500;
 }
