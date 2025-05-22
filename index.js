@@ -44,6 +44,24 @@ const Case = sequelize.define('Case', {
   timestamps: true
 });
 
+// Define Question Model
+const Question = sequelize.define('Question', {
+  question: {
+    type: DataTypes.TEXT,
+    allowNull: false
+  },
+  type: {
+    type: DataTypes.STRING,
+    defaultValue: 'general'
+  }
+}, {
+  timestamps: true
+});
+
+// Define relationships
+Case.hasMany(Question);
+Question.belongsTo(Case);
+
 // Initialize OpenAI
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
@@ -101,6 +119,41 @@ app.get('/api/cases', async (req, res) => {
   } catch (error) {
     console.error('Error fetching cases:', error);
     res.status(500).json({ message: 'Failed to fetch cases' });
+  }
+});
+
+// Get questions for a case
+app.get('/api/cases/:id/questions', async (req, res) => {
+  try {
+    const caseId = req.params.id;
+    console.log(`Fetching questions for case ID: ${caseId}`);
+    
+    let caseData = await Case.findByPk(caseId);
+    
+    if (!caseData) {
+      // Intentar buscar por nombre
+      caseData = await Case.findOne({ where: { name: caseId } });
+      
+      if (!caseData) {
+        return res.status(404).json({ message: 'Case not found' });
+      }
+    }
+    
+    // Buscar preguntas asociadas a este caso
+    const questions = await Question.findAll({
+      where: { CaseId: caseData.id },
+      order: [['createdAt', 'DESC']]
+    });
+    
+    console.log(`Found ${questions.length} questions for case: ${caseData.name}`);
+    
+    res.json({
+      case: caseData,
+      questions: questions
+    });
+  } catch (error) {
+    console.error('Error fetching questions:', error);
+    res.status(500).json({ message: 'Failed to fetch questions' });
   }
 });
 
@@ -224,6 +277,34 @@ async function generateQuestionsForCase(caseData, req, res, debugInfo) {
     });
   }
   
+  // Verificar si ya existen preguntas para este caso
+  let existingQuestions = [];
+  if (caseData.id) {
+    existingQuestions = await Question.findAll({
+      where: { CaseId: caseData.id },
+      order: [['createdAt', 'DESC']],
+      limit: 10
+    });
+    
+    if (existingQuestions.length > 0) {
+      debugInfo.steps.push(`Se encontraron ${existingQuestions.length} preguntas guardadas previamente`);
+      
+      // Si hay preguntas recientes, devolverlas directamente
+      if (existingQuestions.length >= 5 && !req.query.refresh) {
+        debugInfo.steps.push('Usando preguntas existentes en lugar de generar nuevas');
+        debugInfo.openaiConnected = true; // Para indicar que el proceso fue exitoso
+        
+        return res.json({
+          case: caseData,
+          questions: existingQuestions,
+          openaiConnected: true,
+          fromCache: true,
+          debug: debugInfo
+        });
+      }
+    }
+  }
+  
   debugInfo.steps.push('Conectando con OpenAI API');
   console.log('Connecting to OpenAI API with key starting with:', process.env.OPENAI_API_KEY.substring(0, 5));
   
@@ -252,11 +333,51 @@ async function generateQuestionsForCase(caseData, req, res, debugInfo) {
     console.log('OpenAI response received');
     
     try {
-      const questions = JSON.parse(completion.choices[0].message.content);
+      const questionData = JSON.parse(completion.choices[0].message.content);
       debugInfo.steps.push('Respuesta JSON parseada correctamente');
+      console.log('Parsed response:', questionData);
+      
+      let savedQuestions = [];
+      
+      // Guardar las preguntas en la base de datos
+      if (caseData.id && questionData.questions && Array.isArray(questionData.questions)) {
+        debugInfo.steps.push(`Guardando ${questionData.questions.length} preguntas en la base de datos`);
+        
+        // Primero eliminamos preguntas anteriores si hay más de 20
+        const count = await Question.count({ where: { CaseId: caseData.id } });
+        if (count > 20) {
+          const oldQuestions = await Question.findAll({
+            where: { CaseId: caseData.id },
+            order: [['createdAt', 'ASC']],
+            limit: count - 20
+          });
+          
+          if (oldQuestions.length > 0) {
+            await Question.destroy({
+              where: { id: oldQuestions.map(q => q.id) }
+            });
+            debugInfo.steps.push(`Se eliminaron ${oldQuestions.length} preguntas antiguas`);
+          }
+        }
+        
+        // Guardar las nuevas preguntas
+        for (const q of questionData.questions) {
+          const newQuestion = await Question.create({
+            question: q.question,
+            type: q.type,
+            CaseId: caseData.id
+          });
+          savedQuestions.push(newQuestion);
+        }
+        debugInfo.steps.push(`${savedQuestions.length} preguntas guardadas exitosamente`);
+      } else {
+        debugInfo.steps.push('No se pudieron guardar las preguntas (caso sin ID o formato incorrecto)');
+        savedQuestions = questionData.questions || [];
+      }
       
       return res.json({
-        questions: questions,
+        case: caseData,
+        questions: savedQuestions.length > 0 ? savedQuestions : questionData.questions || [],
         openaiConnected: true,
         debug: debugInfo
       });

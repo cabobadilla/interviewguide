@@ -31,6 +31,8 @@ function QuestionList({ questions }) {
       {questionItems && questionItems.length > 0 && questionItems.map((question, index) => {
         // Determinar el tipo de pregunta
         const questionType = question.type || 'general';
+        // Obtener el texto de la pregunta
+        const questionText = question.question || question.text || question;
         
         return (
           <div 
@@ -44,7 +46,14 @@ function QuestionList({ questions }) {
                   ? '💡 Consideración: '
                   : '❓ Pregunta: '}
             </h3>
-            <p>{question.question || question.text || question}</p>
+            <p>{typeof questionText === 'string' ? questionText : JSON.stringify(questionText)}</p>
+            
+            {/* Si hay otros detalles importantes, mostrarlos */}
+            {question.details && (
+              <div className="question-details">
+                <p><em>{question.details}</em></p>
+              </div>
+            )}
           </div>
         );
       })}

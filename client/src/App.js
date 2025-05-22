@@ -16,6 +16,7 @@ function App() {
   const [apiError, setApiError] = useState(null);
   const [debugInfo, setDebugInfo] = useState(null);
   const [showDebug, setShowDebug] = useState(false);
+  const [isFromCache, setIsFromCache] = useState(false);
 
   useEffect(() => {
     fetchCases();
@@ -36,9 +37,10 @@ function App() {
     setApiStatus(null);
     setApiError(null);
     setDebugInfo(null);
+    setIsFromCache(false);
   };
 
-  const handleShowQuestions = async () => {
+  const handleShowQuestions = async (forceRefresh = false) => {
     if (!selectedCase) return;
     
     setLoading(true);
@@ -46,10 +48,17 @@ function App() {
     setApiError(null);
     setQuestions([]);
     setDebugInfo(null);
+    setIsFromCache(false);
     
     try {
       setApiStatus('Conectando con el servidor...');
-      const response = await axios.post(`/api/cases/${selectedCase}/questions`);
+      
+      // Añadir parámetro de refresco si es necesario
+      const url = forceRefresh 
+        ? `/api/cases/${selectedCase}/questions?refresh=true` 
+        : `/api/cases/${selectedCase}/questions`;
+      
+      const response = await axios.post(url);
       
       console.log('Respuesta completa:', response.data);
       
@@ -57,16 +66,31 @@ function App() {
         setDebugInfo(response.data.debug);
       }
       
+      setIsFromCache(response.data.fromCache || false);
+      
       if (response.data.openaiConnected) {
-        setApiStatus('Conexión con OpenAI exitosa');
+        setApiStatus(response.data.fromCache 
+          ? 'Usando preguntas guardadas previamente'
+          : 'Conexión con OpenAI exitosa');
       }
       
       // Extraer correctamente las preguntas del objeto de respuesta
-      const questionsData = response.data.questions || [];
+      let questionsData = [];
+      
+      if (response.data.questions && Array.isArray(response.data.questions)) {
+        questionsData = response.data.questions;
+      } else if (response.data.questions && response.data.questions.questions) {
+        questionsData = response.data.questions.questions;
+      }
+      
       console.log('Preguntas recibidas:', questionsData);
       
-      setQuestions(questionsData);
-      setApiStatus('Preguntas recibidas correctamente');
+      if (questionsData.length === 0) {
+        setApiError('No se recibieron preguntas del servidor');
+      } else {
+        setQuestions(questionsData);
+        setApiStatus('Preguntas recibidas correctamente');
+      }
     } catch (error) {
       console.error('Error completo:', error);
       setApiError(error.response?.data?.message || error.message || 'Error desconocido');
@@ -78,6 +102,10 @@ function App() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRefreshQuestions = () => {
+    handleShowQuestions(true);
   };
 
   const handleAddCase = async (caseData) => {
@@ -105,15 +133,16 @@ function App() {
         />
         
         <div style={{ marginTop: '20px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-          <button onClick={handleShowQuestions} disabled={!selectedCase}>
-            Mostrar Preguntas
+          <button onClick={() => handleShowQuestions(false)} disabled={!selectedCase || loading}>
+            {loading ? 'Cargando...' : 'Mostrar Preguntas'}
           </button>
-          <button onClick={() => setShowForm(!showForm)}>
+          <button onClick={() => setShowForm(!showForm)} disabled={loading}>
             {showForm ? 'Cancelar' : 'Agregar Nuevo Caso'}
           </button>
           <button 
             onClick={() => setShowDebug(!showDebug)} 
             style={{ marginLeft: 'auto', background: '#7f8c8d' }}
+            disabled={loading}
           >
             {showDebug ? 'Ocultar Herramientas' : 'Mostrar Herramientas de Diagnóstico'}
           </button>
@@ -155,7 +184,18 @@ function App() {
       
       {questions.length > 0 && (
         <div className="card">
-          <h2>Preguntas para la Entrevista</h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h2>Preguntas para la Entrevista</h2>
+            {isFromCache && (
+              <button 
+                onClick={handleRefreshQuestions} 
+                className="refresh-button"
+                disabled={loading}
+              >
+                🔄 Generar Nuevas Preguntas
+              </button>
+            )}
+          </div>
           <QuestionList questions={questions} />
         </div>
       )}
