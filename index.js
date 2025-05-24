@@ -13,17 +13,34 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// SQLite connection
-const sequelize = new Sequelize({
-  dialect: 'sqlite',
-  storage: './database.sqlite',
-  logging: false
-});
+// Database connection configuration
+let sequelize;
+if (process.env.DATABASE_URL) {
+  // PostgreSQL connection for production
+  sequelize = new Sequelize(process.env.DATABASE_URL, {
+    dialect: 'postgres',
+    protocol: 'postgres',
+    dialectOptions: {
+      ssl: {
+        require: true,
+        rejectUnauthorized: false // Para permitir conexión a Render PostgreSQL
+      }
+    },
+    logging: false
+  });
+} else {
+  // SQLite connection for development
+  sequelize = new Sequelize({
+    dialect: 'sqlite',
+    storage: './database.sqlite',
+    logging: false
+  });
+}
 
 // Test connection
 sequelize.authenticate()
-  .then(() => console.log('Connected to SQLite database'))
-  .catch(err => console.error('SQLite connection error:', err));
+  .then(() => console.log(`Connected to ${process.env.DATABASE_URL ? 'PostgreSQL' : 'SQLite'} database`))
+  .catch(err => console.error('Database connection error:', err));
 
 // Define Interview Case Model
 const Case = sequelize.define('Case', {
@@ -168,6 +185,50 @@ app.get('/api/test-openai', async (req, res) => {
         message: error.message,
         type: error.type,
         code: error.code
+      }
+    });
+  }
+});
+
+// Test database connection endpoint
+app.get('/api/test-database', async (req, res) => {
+  try {
+    console.log('Testing database connection...');
+    
+    // Intentar autenticar la conexión
+    await sequelize.authenticate();
+    
+    // Obtener información sobre la base de datos
+    const databaseType = process.env.DATABASE_URL ? 'PostgreSQL' : 'SQLite';
+    const databaseInfo = {
+      dialect: sequelize.getDialect(),
+      name: sequelize.getDatabaseName(),
+      host: sequelize.config.host || 'local',
+      port: sequelize.config.port || 'default'
+    };
+    
+    // Verificar si las tablas están creadas
+    const tables = await sequelize.getQueryInterface().showAllTables();
+    
+    res.json({
+      success: true,
+      message: `${databaseType} connection successful`,
+      data: {
+        type: databaseType,
+        info: databaseInfo,
+        tables: tables,
+        tablesCount: tables.length
+      }
+    });
+  } catch (error) {
+    console.error('Database connection test failed:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Database connection failed',
+      error: {
+        message: error.message,
+        name: error.name,
+        stack: process.env.NODE_ENV !== 'production' ? error.stack : undefined
       }
     });
   }
@@ -905,10 +966,16 @@ app.get('/api/interviews/:id/selections', async (req, res) => {
 });
 
 // Sync database and start the server
-sequelize.sync() // No forzar recreación para preservar datos
+const syncOptions = {
+  // Solo usamos force en desarrollo con precaución, nunca en producción
+  // force: process.env.NODE_ENV !== 'production' && process.env.FORCE_SYNC === 'true'
+};
+
+sequelize.sync(syncOptions)
   .then(async () => {
     app.listen(PORT, async () => {
       console.log(`Server running on port ${PORT}`);
+      console.log('Database type:', process.env.DATABASE_URL ? 'PostgreSQL' : 'SQLite');
       console.log('OpenAI API Key:', process.env.OPENAI_API_KEY ? `${process.env.OPENAI_API_KEY.substring(0, 4)}...` : 'Not set');
       try {
         await seedDefaultCases();

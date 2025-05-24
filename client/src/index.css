@@ -462,13 +462,31 @@ select:focus, input:focus {
   padding: 16px;
 }
 
+.connection-test-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
 .test-button {
   background-color: #4b5563;
   margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .test-button:hover {
   background-color: #374151;
+}
+
+.database-test {
+  background-color: #0369a1;
+}
+
+.database-test:hover {
+  background-color: #075985;
 }
 
 .test-result {
@@ -538,10 +556,12 @@ select:focus, input:focus {
 /* Spinner de carga */
 .spinner {
   animation: rotate 2s linear infinite;
+  width: 20px;
+  height: 20px;
 }
 
 .spinner .path {
-  stroke: #ffffff;
+  stroke: white;
   stroke-linecap: round;
   animation: dash 1.5s ease-in-out infinite;
 }

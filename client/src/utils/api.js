@@ -1,18 +1,36 @@
 import axios from 'axios';
 
-// Configuración de axios para producción y desarrollo
+// Determinar la URL base dependiendo del entorno
+const isProduction = process.env.NODE_ENV === 'production';
+const baseURL = isProduction ? '' : 'http://localhost:3000';
+
+// Crear instancia de axios con la configuración base
 const API = axios.create({
-  baseURL: process.env.NODE_ENV === 'production' ? '' : 'http://localhost:3000',
+  baseURL,
   headers: {
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
+    'Cache-Control': 'no-cache',
   }
 });
 
-// Interceptores para manejo de errores global
+// Interceptores para manejo de solicitudes y respuestas
+API.interceptors.request.use(
+  (config) => {
+    // Aquí se pueden agregar tokens, autenticación, etc.
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
 API.interceptors.response.use(
-  response => response,
-  error => {
-    console.error('API Error:', error);
+  (response) => {
+    return response;
+  },
+  (error) => {
+    // Manejo centralizado de errores
+    console.error('API Error:', error.response || error);
     return Promise.reject(error);
   }
 );
