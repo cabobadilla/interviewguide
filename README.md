@@ -75,6 +75,22 @@ El proyecto incluye una configuración `render.yaml` para despliegue sencillo en
 
 Render creará automáticamente una base de datos PostgreSQL y configurará la URL de conexión.
 
+#### Comandos de Arranque en Render
+
+Para un despliegue correcto en Render, utiliza los siguientes comandos:
+
+**Build Command:**
+```
+npm install && cd client && npm install && npm run build && cd ..
+```
+
+**Start Command:**
+```
+node index.js
+```
+
+Estos comandos instalarán las dependencias tanto del servidor como del cliente, compilarán la aplicación React, y arrancarán el servidor Node.js.
+
 ## Estructura del Proyecto
 
 ```
